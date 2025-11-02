@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Orbiter — Future Echo Games</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        canvas { 
+            background: #000;
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 2px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 1px);
+            background-size: 100px 100px, 50px 50px;
+            background-position: 0 0;
+        }
+        .part-button.selected {
+            border-color: #4f46e5;
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <a class="absolute left-4 top-4 z-50" href="/index.html">
+        <button class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-slate-800/60 hover:bg-slate-800 text-slate-200">← Back</button>
+    </a>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Build Area -->
+            <div class="lg:w-1/4 space-y-4">
+                <div class="bg-slate-800 rounded-lg p-4">
+                    <h2 class="text-xl font-bold mb-4">Parts</h2>
+                    <div class="space-y-4">
+                    <!-- Command & Control -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Command & Control</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="command">
+                                🛸<br>Command Pod
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="probe">
+                                📡<br>Probe Core
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="dockingPort">
+                                🔌<br>Docking Port
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="hitchhiker">
+                                🏠<br>Crew Module
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Fuel & Propulsion -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Fuel & Propulsion</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fuelSmall">
+                                🔋<br>Small Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fuelLarge">
+                                ⛽<br>Large Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="engineSmall">
+                                🛸<br>Small Engine
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="engineLarge">
+                                🚀<br>Large Engine
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="ionEngine">
+                                ⚡<br>Ion Engine
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="xenonTank">
+                                💠<br>Xenon Tank
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Utility & Structure -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Utility & Structure</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="rcs">
+                                💨<br>RCS
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="decoupler">
+                                ⚡<br>Decoupler
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="strut">
+                                📎<br>Strut
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="noseCone">
+                                🔺<br>Nose Cone
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="adapter">
+                                ⬡<br>Adapter
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="radiator">
+                                ❄️<br>Radiator
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Landing & Recovery -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Landing & Recovery</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="legs">
+                                🦿<br>Landing Legs
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="chute">
+                                🪂<br>Parachute
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="heatshield">
+                                🛡️<br>Heat Shield
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="airbrake">
+                                🎭<br>Airbrake
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Science & Power -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Science & Power</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="solar">
+                                ☀️<br>Solar Panel
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="science">
+                                🔬<br>Science Lab
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="antenna">
+                                📡<br>Antenna
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="rtg">
+                                ⚛️<br>RTG
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="goo">
+                                🧪<br>Goo Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="sensor">
+                                📊<br>Sensors
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-4">
+                    <h2 class="text-xl font-bold mb-4">Stats</h2>
+                    <div class="space-y-2 text-sm">
+                        <div>Mass: <span id="stat-mass">0</span> kg</div>
+                        <div>Thrust: <span id="stat-thrust">0</span> kN</div>
+                        <div>Delta-v: <span id="stat-deltav">0</span> m/s</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-4">
+                    <h2 class="text-xl font-bold mb-4">Flight Data</h2>
+                    <div class="space-y-2 text-sm">
+                        <div>Altitude: <span id="stat-altitude">0</span> km</div>
+                        <div>Velocity: <span id="stat-velocity">0</span> m/s</div>
+                        <div>Orbital Period: <span id="stat-period">N/A</span></div>
+                    </div>
+                </div>
+
+                <button id="launch-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Launch!
+                </button>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="lg:flex-1">
+                <canvas id="gameCanvas" class="w-full rounded-lg border border-slate-700"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const launchBtn = document.getElementById('launch-btn');
+
+        // Set canvas size with good resolution
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const width = container.clientWidth;
+            const height = Math.min(window.innerHeight - 200, width * 0.75);
+            
+            // Set actual pixel size (2x for retina)
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+            
+            // Set display size
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            
+            // Scale context for retina
+            ctx.scale(2, 2);
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Game state
+        let gameState = 'building'; // 'building' or 'flying'
+        let rocket = {
+            parts: [],
+            position: { x: 0, y: 0 },
+            velocity: { x: 0, y: 0 },
+            rotation: 0,
+            thrust: 0,
+            mass: 0
+        };
+
+        // Part definitions
+        const PARTS = {
+            // Command & Control
+            command: {
+                name: 'Command Pod',
+                mass: 1000,
+                width: 20,
+                height: 30,
+                color: '#C0C0C0',
+                crew: 3,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    // Pod body
+                    ctx.fillStyle = '#C0C0C0';
+                    ctx.beginPath();
+                    ctx.moveTo(-12, -15);
+                    ctx.lineTo(12, -15);
+                    ctx.lineTo(10, 15);
+                    ctx.lineTo(-10, 15);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Window
+                    ctx.fillStyle = '#4B5563';
+                    ctx.fillRect(-6, -10, 12, 6);
+                    ctx.restore();
+                }
+            },
+            probe: {
+                name: 'Probe Core',
+                mass: 400,
+                width: 16,
+                height: 16,
+                color: '#9CA3AF',
+                electricityUse: 0.2,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    // Core
+                    ctx.fillStyle = '#9CA3AF';
+                    ctx.fillRect(-8, -8, 16, 16);
+                    // Antenna
+                    ctx.strokeStyle = '#C0C0C0';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -8);
+                    ctx.lineTo(0, -16);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            
+            // Fuel & Propulsion
+            fuelSmall: {
+                name: 'Small Fuel Tank',
+                mass: 1000,
+                width: 16,
+                height: 30,
+                color: '#E5E7EB',
+                fuel: 500,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#E5E7EB';
+                    ctx.fillRect(-8, -15, 16, 30);
+                    // Detail lines
+                    ctx.strokeStyle = '#9CA3AF';
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -5);
+                    ctx.lineTo(8, -5);
+                    ctx.moveTo(-8, 5);
+                    ctx.lineTo(8, 5);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            fuelLarge: {
+                name: 'Large Fuel Tank',
+                mass: 3000,
+                width: 24,
+                height: 50,
+                color: '#E5E7EB',
+                fuel: 2000,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#E5E7EB';
+                    ctx.fillRect(-12, -25, 24, 50);
+                    // Detail stripes
+                    ctx.strokeStyle = '#9CA3AF';
+                    for(let i = -15; i < 20; i += 10) {
+                        ctx.beginPath();
+                        ctx.moveTo(-12, i);
+                        ctx.lineTo(12, i);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            },
+            engineSmall: {
+                name: 'Small Engine',
+                mass: 800,
+                thrust: 15000,
+                width: 16,
+                height: 24,
+                color: '#4B5563',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#4B5563';
+                    // Engine body
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -12);
+                    ctx.lineTo(8, -12);
+                    ctx.lineTo(10, 12);
+                    ctx.lineTo(-10, 12);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            engineLarge: {
+                name: 'Large Engine',
+                mass: 2000,
+                thrust: 45000,
+                width: 24,
+                height: 36,
+                color: '#4B5563',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#4B5563';
+                    // Engine body
+                    ctx.beginPath();
+                    ctx.moveTo(-12, -18);
+                    ctx.lineTo(12, -18);
+                    ctx.lineTo(15, 18);
+                    ctx.lineTo(-15, 18);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Engine details
+                    ctx.strokeStyle = '#6B7280';
+                    ctx.beginPath();
+                    ctx.moveTo(-8, 10);
+                    ctx.lineTo(8, 10);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            ionEngine: {
+                name: 'Ion Engine',
+                mass: 250,
+                thrust: 2000,
+                width: 14,
+                height: 16,
+                color: '#60A5FA',
+                electricityUse: 1.5,
+                xenonUse: 0.1,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    // Engine housing
+                    ctx.fillStyle = '#60A5FA';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 7, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Glow effect
+                    ctx.fillStyle = 'rgba(147, 197, 253, 0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 9, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            xenonTank: {
+                name: 'Xenon Tank',
+                mass: 400,
+                width: 16,
+                height: 24,
+                color: '#818CF8',
+                xenon: 100,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    // Tank body
+                    ctx.fillStyle = '#818CF8';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Pressure lines
+                    ctx.strokeStyle = '#6366F1';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 6, 10, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+
+            // Additional parts for other categories...
+        };
+
+        // Handle part selection
+        document.querySelectorAll('.part-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.part-button').forEach(b => b.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedPart = button.dataset.part;
+            });
+        });
+
+        // Handle canvas clicks
+        canvas.addEventListener('click', (e) => {
+            if (gameState !== 'building' || !selectedPart) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * 2;
+            const y = (e.clientY - rect.top) * 2;
+
+            rocket.parts.push({
+                type: selectedPart,
+                x: x - canvas.width/4,
+                y: y - canvas.height/2
+            });
+
+            updateRocketStats();
+            drawBuildMode();
+        });
+
+        // Update rocket statistics
+        function updateRocketStats() {
+            let mass = 0;
+            let thrust = 0;
+
+            rocket.parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef) {
+                    mass += partDef.mass || 0;
+                    thrust += partDef.thrust || 0;
+                }
+            });
+
+            rocket.mass = mass;
+            rocket.thrust = thrust;
+
+            // Update UI
+            document.getElementById('stat-mass').textContent = (mass/1000).toFixed(1);
+            document.getElementById('stat-thrust').textContent = (thrust/1000).toFixed(1);
+            
+            // Calculate delta-v using the rocket equation
+            if (thrust > 0) {
+                const exhaustVelocity = thrust / (rocket.mass * 0.1); // Approximate mass flow rate
+                const massRatio = mass / (mass * 0.7); // Assuming 30% of mass is fuel
+                const deltav = exhaustVelocity * Math.log(massRatio);
+                document.getElementById('stat-deltav').textContent = deltav.toFixed(0);
+            } else {
+                document.getElementById('stat-deltav').textContent = '0';
+            }
+        }
+
+        // Draw build mode
+        function drawBuildMode() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 20) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw rocket parts
+            const buildCenter = { x: canvas.width/4, y: canvas.height/2 };
+            rocket.parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef && partDef.render) {
+                    partDef.render(buildCenter.x + part.x, buildCenter.y + part.y, 0);
+                }
+            });
+        }
+
+        // Launch mode physics
+        const G = 6.67430e-11; // gravitational constant
+        const EARTH_MASS = 5.972e24; // kg
+        const EARTH_RADIUS = 6371000; // meters
+        const SCALE = 100000; // meters per pixel
+
+        let keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // Launch button
+        launchBtn.addEventListener('click', () => {
+            if (rocket.parts.length > 0) {
+                gameState = 'flying';
+                launchBtn.disabled = true;
+                rocket.position = { x: canvas.width/4, y: canvas.height - 100 };
+                rocket.velocity = { x: 0, y: 0 };
+                rocket.rotation = -Math.PI/2; // pointing up
+                requestAnimationFrame(updateFlight);
+            }
+        });
+
+        // Flight mode update
+        function updateFlight() {
+            if (gameState !== 'flying') return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw starry background
+            // ... (background drawing code remains the same)
+
+            // Handle input
+            if (keys.ArrowLeft) rocket.rotation -= 0.02;
+            if (keys.ArrowRight) rocket.rotation += 0.02;
+            if (keys.ArrowUp) {
+                // Apply thrust
+                const thrust = rocket.thrust / rocket.mass;
+                rocket.velocity.x += Math.cos(rocket.rotation) * thrust * 0.016;
+                rocket.velocity.y += Math.sin(rocket.rotation) * thrust * 0.016;
+            }
+
+            // Apply gravity
+            const distance = Math.sqrt(
+                Math.pow(rocket.position.x - canvas.width/2, 2) +
+                Math.pow(rocket.position.y - canvas.height/2, 2)
+            ) * SCALE;
+            
+            const gravity = G * EARTH_MASS / Math.pow(distance, 2);
+            const angle = Math.atan2(
+                canvas.height/2 - rocket.position.y,
+                canvas.width/2 - rocket.position.x
+            );
+            
+            rocket.velocity.x += Math.cos(angle) * gravity * 0.016;
+            rocket.velocity.y += Math.sin(angle) * gravity * 0.016;
+
+            // Update position
+            rocket.position.x += rocket.velocity.x;
+            rocket.position.y += rocket.velocity.y;
+
+            // Draw rocket
+            ctx.save();
+            ctx.translate(rocket.position.x, rocket.position.y);
+            ctx.rotate(rocket.rotation);
+            
+            rocket.parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef && partDef.render) {
+                    partDef.render(part.x, part.y, 0);
+                }
+            });
+
+            // Draw engine exhaust when thrusting
+            if (keys.ArrowUp) {
+                ctx.strokeStyle = '#60A5FA';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 15);
+                ctx.lineTo(0, 30);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+
+            // Update flight data
+            const altitude = (Math.sqrt(
+                Math.pow(rocket.position.x - canvas.width/2, 2) +
+                Math.pow(rocket.position.y - canvas.height/2, 2)
+            ) * SCALE - EARTH_RADIUS) / 1000;
+            
+            const velocity = Math.sqrt(
+                Math.pow(rocket.velocity.x, 2) +
+                Math.pow(rocket.velocity.y, 2)
+            ) * SCALE;
+
+            document.getElementById('stat-altitude').textContent = Math.max(0, altitude.toFixed(1));
+            document.getElementById('stat-velocity').textContent = velocity.toFixed(0);
+
+            // Calculate orbital period if in orbit
+            if (altitude > 0) {
+                const semiMajorAxis = distance;
+                const period = 2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * EARTH_MASS));
+                document.getElementById('stat-period').textContent = 
+                    period > 0 ? (period / 60).toFixed(1) + ' minutes' : 'N/A';
+            }
+
+            requestAnimationFrame(updateFlight);
+        }
+
+        // Initial draw
+        drawBuildMode();
+    </script>
+</body>
+</html>
