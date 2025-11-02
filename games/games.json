@@ -10,6 +10,30 @@
       "gradientTo": "rose-500",
       "tags": ["physics", "arcade"],
       "featured": true
+    },
+    {
+      "id": "mini-orbiter",
+      "title": "Mini Orbiter",
+      "description": "Build and launch your own rockets! A KSP-inspired space sandbox with realistic physics.",
+      "path": "/games/mini-orbiter.html",
+      "icon": "🚀",
+      "gradientFrom": "indigo-600",
+      "gradientTo": "blue-400",
+      "tags": ["simulation", "space", "physics", "sandbox"],
+      "featured": true,
+      "details": {
+        "controls": [
+          "Click to place parts in build mode",
+          "Arrow keys to control rocket in flight",
+          "Space to activate stages"
+        ],
+        "features": [
+          "Build complex rockets from over 20 parts",
+          "Realistic orbital physics",
+          "Multiple engine types including ion propulsion",
+          "Science experiments and power management"
+        ]
+      }
     }
   ]
 }
