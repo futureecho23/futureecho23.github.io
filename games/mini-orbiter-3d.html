@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Orbiter 3D — Future Echo Games</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Error handling for Three.js initialization
+        window.addEventListener('error', function(e) {
+            if (e.error && e.error.toString().includes('THREE')) {
+                alert('Error initializing 3D environment. Please make sure your browser supports WebGL.');
+                console.error('Three.js initialization error:', e.error);
+            }
+        });
+    </script>
+    <style>
+        canvas { 
+            background: #000;
+        }
+        .part-button.selected {
+            border-color: #4f46e5;
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <a class="absolute left-4 top-4 z-50" href="/index.html">
+        <button class="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-slate-800/60 hover:bg-slate-800 text-slate-200">← Back</button>
+    </a>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Build Area -->
+            <div class="lg:w-1/4 space-y-4">
+                <div class="bg-slate-800 rounded-lg p-4">
+                    <h2 class="text-xl font-bold mb-4">Parts</h2>
+                    <div class="space-y-4">
+                        <!-- Command & Control -->
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-400 mb-2">Command & Control</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="command">
+                                    🛸<br>Command Pod
+                                </button>
+                                <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="probe">
+                                    📡<br>Probe Core
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Propulsion -->
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-400 mb-2">Propulsion</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fuelTank">
+                                    ⛽<br>Fuel Tank
+                                </button>
+                                <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="engine">
+                                    🚀<br>Engine
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-4">
+                    <h2 class="text-xl font-bold mb-4">Stats</h2>
+                    <div class="space-y-2 text-sm">
+                        <div>Mass: <span id="stat-mass">0</span> kg</div>
+                        <div>Thrust: <span id="stat-thrust">0</span> kN</div>
+                        <div>Delta-v: <span id="stat-deltav">0</span> m/s</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-lg p-4">
+                    <h2 class="text-xl font-bold mb-4">Flight Data</h2>
+                    <div class="space-y-2 text-sm">
+                        <div>Altitude: <span id="stat-altitude">0</span> km</div>
+                        <div>Velocity: <span id="stat-velocity">0</span> m/s</div>
+                        <div>Orbital Period: <span id="stat-period">N/A</span></div>
+                    </div>
+                </div>
+
+                <button id="launch-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Launch!
+                </button>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="lg:flex-1">
+                <canvas id="gameCanvas" class="w-full rounded-lg border border-slate-700"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Three.js setup
+        const canvas = document.getElementById('gameCanvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        const controls = new THREE.OrbitControls(camera, canvas);
+        const launchBtn = document.getElementById('launch-btn');
+
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 3, 5);
+        scene.add(directionalLight);
+
+        // Add grid helper and reference plane
+        const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
+        scene.add(gridHelper);
+
+        const planeMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x1e293b,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        const planeGeometry = new THREE.PlaneGeometry(100, 100);
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        scene.add(plane);
+
+        // Camera setup
+        camera.position.set(0, 30, 50);
+        camera.lookAt(0, 0, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Set canvas size with good resolution
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const width = container.clientWidth;
+            const height = Math.min(window.innerHeight - 200, width * 0.75);
+            
+            // Update camera aspect ratio
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            
+            // Update renderer size
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Part definitions
+        const PARTS = {
+            command: {
+                name: 'Command Pod',
+                mass: 1000,
+                create: () => {
+                    const group = new THREE.Group();
+                    
+                    // Pod body
+                    const geometry = new THREE.CylinderGeometry(1, 0.8, 3, 32);
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: 0xC0C0C0,
+                        metalness: 0.7,
+                        roughness: 0.3
+                    });
+                    const body = new THREE.Mesh(geometry, material);
+                    
+                    // Windows
+                    const windowGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+                    const windowMat = new THREE.MeshStandardMaterial({
+                        color: 0x4B5563,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const window1 = new THREE.Mesh(windowGeom, windowMat);
+                    window1.rotation.x = Math.PI / 2;
+                    window1.position.set(0.7, 0.5, 0);
+                    
+                    group.add(body);
+                    group.add(window1);
+                    return group;
+                }
+            },
+            probe: {
+                name: 'Probe Core',
+                mass: 400,
+                create: () => {
+                    const group = new THREE.Group();
+                    
+                    // Core body
+                    const geometry = new THREE.BoxGeometry(1.5, 1, 1.5);
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: 0x9CA3AF,
+                        metalness: 0.6,
+                        roughness: 0.4
+                    });
+                    const body = new THREE.Mesh(geometry, material);
+                    
+                    // Antenna
+                    const antGeometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
+                    const antMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xC0C0C0,
+                        metalness: 0.8,
+                        roughness: 0.2
+                    });
+                    const antenna = new THREE.Mesh(antGeometry, antMaterial);
+                    antenna.position.y = 1;
+                    
+                    group.add(body);
+                    group.add(antenna);
+                    return group;
+                }
+            },
+            fuelTank: {
+                name: 'Fuel Tank',
+                mass: 2000,
+                create: () => {
+                    const geometry = new THREE.CylinderGeometry(1, 1, 4, 32);
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: 0xE5E7EB,
+                        metalness: 0.5,
+                        roughness: 0.5
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    return mesh;
+                }
+            },
+            engine: {
+                name: 'Engine',
+                mass: 1500,
+                thrust: 30000,
+                create: () => {
+                    const group = new THREE.Group();
+                    
+                    // Engine bell
+                    const bellGeometry = new THREE.CylinderGeometry(0.8, 1.5, 2, 32, 1, true);
+                    const bellMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x4B5563,
+                        metalness: 0.8,
+                        roughness: 0.2,
+                        side: THREE.DoubleSide
+                    });
+                    const bell = new THREE.Mesh(bellGeometry, bellMaterial);
+                    
+                    // Engine mount
+                    const mountGeometry = new THREE.CylinderGeometry(1, 0.8, 0.5, 32);
+                    const mountMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x6B7280,
+                        metalness: 0.6,
+                        roughness: 0.4
+                    });
+                    const mount = new THREE.Mesh(mountGeometry, mountMaterial);
+                    mount.position.y = 1;
+                    
+                    group.add(bell);
+                    group.add(mount);
+                    return group;
+                }
+            }
+        };
+
+        // Game state
+        let gameState = 'building';
+        let selectedPart = null;
+        let rocket = {
+            parts: [],
+            object: new THREE.Group(),
+            position: new THREE.Vector3(),
+            velocity: new THREE.Vector3(),
+            rotation: new THREE.Euler(),
+            thrust: 0,
+            mass: 0
+        };
+
+        // Add rocket group to scene
+        scene.add(rocket.object);
+
+        // Raycaster for 3D object placement
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const buildPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
+
+        // Handle part selection
+        document.querySelectorAll('.part-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.part-button').forEach(b => b.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedPart = button.dataset.part;
+            });
+        });
+
+        // Handle canvas clicks for part placement
+        canvas.addEventListener('click', (e) => {
+            if (gameState !== 'building' || !selectedPart) return;
+
+            // Calculate mouse position in normalized device coordinates
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate intersection with the build plane
+            const intersection = new THREE.Vector3();
+            raycaster.ray.intersectPlane(buildPlane, intersection);
+
+            // Create new part at intersection point
+            const partObj = PARTS[selectedPart].create();
+            partObj.position.copy(intersection);
+            rocket.object.add(partObj);
+            
+            rocket.parts.push({
+                type: selectedPart,
+                object: partObj,
+                position: intersection.clone()
+            });
+
+            updateRocketStats();
+        });
+
+        // Launch button handler
+        launchBtn.addEventListener('click', () => {
+            if (gameState === 'building' && rocket.parts.length > 0) {
+                gameState = 'flying';
+                launchBtn.textContent = 'Reset';
+                
+                // Reset camera for flight mode
+                camera.position.set(20, 10, 20);
+                camera.lookAt(rocket.object.position);
+            } else {
+                gameState = 'building';
+                launchBtn.textContent = 'Launch!';
+                
+                // Reset rocket
+                rocket.position.set(0, 0, 0);
+                rocket.velocity.set(0, 0, 0);
+                rocket.object.position.set(0, 0, 0);
+                rocket.object.rotation.set(0, 0, 0);
+                
+                // Reset camera for build mode
+                camera.position.set(0, 30, 50);
+                camera.lookAt(0, 0, 0);
+            }
+        });
+
+        // Update rocket statistics
+        function updateRocketStats() {
+            let mass = 0;
+            let thrust = 0;
+
+            rocket.parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef) {
+                    mass += partDef.mass || 0;
+                    thrust += partDef.thrust || 0;
+                }
+            });
+
+            rocket.mass = mass;
+            rocket.thrust = thrust;
+
+            // Update UI
+            document.getElementById('stat-mass').textContent = (mass/1000).toFixed(1);
+            document.getElementById('stat-thrust').textContent = (thrust/1000).toFixed(1);
+            
+            if (thrust > 0) {
+                const exhaustVelocity = thrust / (mass * 0.1);
+                const massRatio = mass / (mass * 0.7);
+                const deltav = exhaustVelocity * Math.log(massRatio);
+                document.getElementById('stat-deltav').textContent = deltav.toFixed(0);
+            }
+        }
+
+        // Physics constants
+        const G = 6.67430e-11;  // Gravitational constant
+        const PLANET_MASS = 5.97e24;  // Earth's mass
+        const PLANET_RADIUS = 6.37e6;  // Earth's radius
+
+        // Physics update
+        function updatePhysics() {
+            if (gameState !== 'flying') return;
+
+            // Apply gravity
+            const r = Math.sqrt(
+                rocket.position.x * rocket.position.x +
+                rocket.position.y * rocket.position.y +
+                rocket.position.z * rocket.position.z
+            );
+            
+            const gForce = (G * PLANET_MASS) / (r * r);
+            const direction = rocket.position.clone().normalize().multiplyScalar(-gForce);
+            
+            rocket.velocity.add(direction);
+            rocket.position.add(rocket.velocity);
+            
+            // Update 3D object position
+            rocket.object.position.copy(rocket.position);
+            
+            // Update stats
+            const altitude = (r - PLANET_RADIUS) / 1000;
+            const speed = rocket.velocity.length();
+            document.getElementById('stat-altitude').textContent = altitude.toFixed(1);
+            document.getElementById('stat-velocity').textContent = speed.toFixed(1);
+            
+            // Calculate orbital period if in stable orbit
+            const a = r;  // Semi-major axis (assuming circular orbit)
+            const period = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / (G * PLANET_MASS));
+            if (period > 0 && altitude > 100) {
+                document.getElementById('stat-period').textContent = (period / 60).toFixed(1) + ' min';
+            }
+            
+            // Camera follow
+            camera.lookAt(rocket.object.position);
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update orbit controls
+            controls.update();
+            
+            // Update physics
+            updatePhysics();
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
