@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Orbiter 3D — KSP Style</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* KSP-style UI */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        .top-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #0f0;
+            padding: 10px;
+            color: #0f0;
+            font-size: 12px;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .top-bar h1 {
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .vessel-info {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 8px;
+        }
+
+        .info-item {
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 8px;
+        }
+
+        .info-label {
+            font-size: 10px;
+            color: #0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #0f0;
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        .left-panel {
+            position: absolute;
+            left: 10px;
+            top: 140px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #0f0;
+            width: 280px;
+            color: #0f0;
+            pointer-events: auto;
+            z-index: 10;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            background: rgba(0, 40, 0, 0.9);
+            border-bottom: 2px solid #0f0;
+            padding: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .panel-content {
+            padding: 10px;
+            font-size: 11px;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .control-group:last-child {
+            border-bottom: none;
+        }
+
+        .control-label {
+            color: #0f0;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 3px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 4px 8px;
+            background: rgba(0, 50, 0, 0.8);
+            border: 1px solid #0f0;
+            color: #0f0;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            pointer-events: auto;
+        }
+
+        .btn:hover {
+            background: rgba(0, 100, 0, 0.9);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .btn.active {
+            background: rgba(0, 150, 0, 1);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .right-panel {
+            position: absolute;
+            right: 10px;
+            top: 140px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #0f0;
+            width: 250px;
+            color: #0f0;
+            pointer-events: auto;
+            z-index: 10;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+
+        .bottom-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #0f0;
+            padding: 10px;
+            color: #0f0;
+            font-size: 11px;
+            pointer-events: auto;
+            z-index: 10;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .status-line:last-child {
+            margin-bottom: 0;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 50, 0, 0.8);
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            z-index: 100;
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            background: rgba(0, 100, 0, 0.9);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .altimeter {
+            position: absolute;
+            right: 10px;
+            bottom: 120px;
+            width: 180px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #0f0;
+            padding: 10px;
+            color: #0f0;
+            pointer-events: auto;
+            z-index: 10;
+            font-family: 'Courier New', monospace;
+        }
+
+        .altitude-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 5px 0;
+            text-align: center;
+        }
+
+        .velocity-value {
+            font-size: 14px;
+            margin: 5px 0;
+            text-align: center;
+        }
+
+        .radar {
+            position: absolute;
+            right: 10px;
+            bottom: 300px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 20, 0, 0.9);
+            border: 2px solid #0f0;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .radar-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Scrollbar styling */
+        .left-panel::-webkit-scrollbar,
+        .right-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .left-panel::-webkit-scrollbar-track,
+        .right-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .left-panel::-webkit-scrollbar-thumb,
+        .right-panel::-webkit-scrollbar-thumb {
+            background: #0f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-container">
+        <!-- Back Button -->
+        <button class="back-button" onclick="window.location.href='/index.html'">← BACK</button>
+
+        <!-- Top Bar - Vessel Info -->
+        <div class="top-bar">
+            <h1>► VESSEL: PROTOTYPE-01</h1>
+            <div class="vessel-info">
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value" id="status">ORBIT</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Ap</div>
+                    <div class="info-value" id="ap">80 km</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Pe</div>
+                    <div class="info-value" id="pe">75 km</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Time</div>
+                    <div class="info-value" id="time">00:00:00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Panel - Controls -->
+        <div class="left-panel">
+            <div class="panel-title">► FLIGHT CONTROLS</div>
+            <div class="panel-content">
+                <div class="control-group">
+                    <div class="control-label">Rotation</div>
+                    <div class="control-row">
+                        <button class="btn" id="pitch-up">▲ PITCH</button>
+                    </div>
+                    <div class="control-row">
+                        <button class="btn" id="yaw-left">◄ YAW</button>
+                        <button class="btn" id="roll-left">↻ ROLL</button>
+                        <button class="btn" id="yaw-right">YAW ►</button>
+                    </div>
+                    <div class="control-row">
+                        <button class="btn" id="pitch-down">▼ PITCH</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Throttle</div>
+                    <input type="range" id="throttle" min="0" max="100" value="0" style="width: 100%; cursor: pointer;">
+                    <div style="text-align: center; margin-top: 5px; color: #0f0;">
+                        <span id="throttle-value">0%</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Main Engines</div>
+                    <div class="control-row">
+                        <button class="btn" id="engine-toggle">ENGINE OFF</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">RCS & SAS</div>
+                    <div class="control-row">
+                        <button class="btn" id="rcs-toggle">RCS OFF</button>
+                        <button class="btn" id="sas-toggle">SAS OFF</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Orbital</div>
+                    <div class="control-row">
+                        <button class="btn" id="prograde">PROG</button>
+                        <button class="btn" id="retrograde">RETRO</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Systems -->
+        <div class="right-panel">
+            <div class="panel-title">► SYSTEMS</div>
+            <div class="panel-content">
+                <div class="control-group">
+                    <div class="control-label">Resources</div>
+                    <div style="font-size: 10px; line-height: 1.6;">
+                        <div>Fuel: <span id="fuel">100</span>%</div>
+                        <div>Oxidizer: <span id="oxidizer">100</span>%</div>
+                        <div>Electricity: <span id="power">100</span>%</div>
+                        <div>Temperature: <span id="temp">288</span>K</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Mass</div>
+                    <div style="font-size: 10px;">
+                        <span id="mass">25.4</span> t
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">G-Force</div>
+                    <div style="font-size: 12px; font-weight: bold;">
+                        <span id="gforce">0.00</span> g
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">Stage Info</div>
+                    <div style="font-size: 10px;">
+                        Stages: <span id="stages">2</span><br>
+                        Active: <span id="active-stage">1</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Radar -->
+        <div class="radar">
+            <canvas class="radar-canvas" id="radarCanvas"></canvas>
+        </div>
+
+        <!-- Altimeter -->
+        <div class="altimeter">
+            <div class="control-label">ALTITUDE</div>
+            <div class="altitude-value" id="altitude">75.2 km</div>
+            <div class="velocity-value">
+                <div style="font-size: 9px; color: #0a0;">Velocity:</div>
+                <span id="velocity">7.65</span> km/s
+            </div>
+        </div>
+
+        <!-- Bottom Bar - MET & Status -->
+        <div class="bottom-bar">
+            <div class="status-line">
+                <span>► MET: <span id="met">00:15:32</span></span>
+                <span>FRAME RATE: <span id="fps">60</span> fps</span>
+                <span>VESSEL MASS: <span id="vessel-mass">25.4</span>t</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Three.js Setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000814);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.z = 150;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, canvas: document.getElementById('canvas') });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(100, 100, 100);
+        scene.add(directionalLight);
+
+        // Create planet (Kerbin)
+        const planetGeometry = new THREE.SphereGeometry(60, 32, 32);
+        const planetCanvas = document.createElement('canvas');
+        planetCanvas.width = 1024;
+        planetCanvas.height = 512;
+        const ctx = planetCanvas.getContext('2d');
+
+        // Draw planet texture
+        ctx.fillStyle = '#1a5c3a';
+        ctx.fillRect(0, 0, planetCanvas.width, planetCanvas.height);
+        
+        // Add some water
+        ctx.fillStyle = '#2080b0';
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.arc(Math.random() * planetCanvas.width, Math.random() * planetCanvas.height, Math.random() * 100 + 30, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Add clouds
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        for (let i = 0; i < 8; i++) {
+            const x = Math.random() * planetCanvas.width;
+            const y = Math.random() * planetCanvas.height;
+            ctx.beginPath();
+            ctx.arc(x, y, Math.random() * 50 + 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const planetTexture = new THREE.CanvasTexture(planetCanvas);
+        const planetMaterial = new THREE.MeshPhongMaterial({ map: planetTexture });
+        const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+        scene.add(planet);
+
+        // Create atmosphere visualization
+        const atmosphereGeometry = new THREE.SphereGeometry(62, 32, 32);
+        const atmosphereMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4da6ff,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.BackSide
+        });
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        scene.add(atmosphere);
+
+        // Create vessel (rocket)
+        const vesselGroup = new THREE.Group();
+        scene.add(vesselGroup);
+
+        // Command pod (top)
+        const podGeometry = new THREE.SphereGeometry(2, 16, 16);
+        const podMaterial = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+        const pod = new THREE.Mesh(podGeometry, podMaterial);
+        pod.position.y = 8;
+        vesselGroup.add(pod);
+
+        // Window on pod
+        const windowGeometry = new THREE.CircleGeometry(0.8, 16);
+        const windowMaterial = new THREE.MeshPhongMaterial({ color: 0x0099ff });
+        const window = new THREE.Mesh(windowGeometry, windowMaterial);
+        window.position.set(2.2, 8, 0);
+        window.rotation.y = Math.PI / 2;
+        vesselGroup.add(window);
+
+        // Fuel tanks (middle)
+        const tankGeometry = new THREE.CylinderGeometry(1.5, 1.5, 12, 16);
+        const tankMaterial = new THREE.MeshPhongMaterial({ color: 0xff6b35 });
+        const tank = new THREE.Mesh(tankGeometry, tankMaterial);
+        tank.position.y = 0;
+        vesselGroup.add(tank);
+
+        // Engines (bottom)
+        const engineGeometry = new THREE.CylinderGeometry(0.8, 1, 4, 16);
+        const engineMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        
+        const engine1 = new THREE.Mesh(engineGeometry, engineMaterial);
+        engine1.position.set(-1, -8, 0);
+        vesselGroup.add(engine1);
+
+        const engine2 = new THREE.Mesh(engineGeometry, engineMaterial);
+        engine2.position.set(1, -8, 0);
+        vesselGroup.add(engine2);
+
+        // Engine glow effect
+        const glowGeometry = new THREE.CylinderGeometry(1.2, 1.5, 5, 16);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0
+        });
+        const engineGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+        engineGlow.position.set(0, -9, 0);
+        vesselGroup.add(engineGlow);
+
+        // Solar panels
+        const panelGeometry = new THREE.BoxGeometry(0.3, 5, 3);
+        const panelMaterial = new THREE.MeshPhongMaterial({ color: 0x003d82 });
+        
+        const panel1 = new THREE.Mesh(panelGeometry, panelMaterial);
+        panel1.position.set(-2, 3, 0);
+        panel1.rotation.z = 0.3;
+        vesselGroup.add(panel1);
+
+        const panel2 = new THREE.Mesh(panelGeometry, panelMaterial);
+        panel2.position.set(2, 3, 0);
+        panel2.rotation.z = -0.3;
+        vesselGroup.add(panel2);
+
+        // Star field
+        const starsGeometry = new THREE.BufferGeometry();
+        const starCount = 1000;
+        const starPositions = new Float32Array(starCount * 3);
+
+        for (let i = 0; i < starCount * 3; i += 3) {
+            starPositions[i] = (Math.random() - 0.5) * 2000;
+            starPositions[i + 1] = (Math.random() - 0.5) * 2000;
+            starPositions[i + 2] = (Math.random() - 0.5) * 2000;
+        }
+
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1 });
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+
+        // Game State
+        let gameState = {
+            altitude: 75.2,
+            velocity: 7.65,
+            ap: 80,
+            pe: 75,
+            pitch: 0,
+            yaw: 0,
+            roll: 0,
+            throttle: 0,
+            engineOn: false,
+            fuel: 100,
+            time: 0,
+            rcsOn: false,
+            sasOn: false
+        };
+
+        // Input handling
+        const keys = {};
+        window.addEventListener('keydown', (e) => { keys[e.key] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+        // Button listeners
+        document.getElementById('pitch-up').addEventListener('mousedown', () => { gameState.pitch += 2; });
+        document.getElementById('pitch-down').addEventListener('mousedown', () => { gameState.pitch -= 2; });
+        document.getElementById('yaw-left').addEventListener('mousedown', () => { gameState.yaw -= 2; });
+        document.getElementById('yaw-right').addEventListener('mousedown', () => { gameState.yaw += 2; });
+        document.getElementById('roll-left').addEventListener('mousedown', () => { gameState.roll -= 2; });
+
+        document.getElementById('throttle').addEventListener('input', (e) => {
+            gameState.throttle = parseInt(e.target.value);
+            document.getElementById('throttle-value').textContent = gameState.throttle + '%';
+        });
+
+        document.getElementById('engine-toggle').addEventListener('click', function() {
+            gameState.engineOn = !gameState.engineOn;
+            this.textContent = gameState.engineOn ? 'ENGINE ON' : 'ENGINE OFF';
+            this.classList.toggle('active');
+        });
+
+        document.getElementById('rcs-toggle').addEventListener('click', function() {
+            gameState.rcsOn = !gameState.rcsOn;
+            this.textContent = gameState.rcsOn ? 'RCS ON' : 'RCS OFF';
+            this.classList.toggle('active');
+        });
+
+        document.getElementById('sas-toggle').addEventListener('click', function() {
+            gameState.sasOn = !gameState.sasOn;
+            this.textContent = gameState.sasOn ? 'SAS ON' : 'SAS OFF';
+            this.classList.toggle('active');
+        });
+
+        // Radar drawing
+        function drawRadar() {
+            const radarCanvas = document.getElementById('radarCanvas');
+            const ctx = radarCanvas.getContext('2d');
+            const w = radarCanvas.width;
+            const h = radarCanvas.height;
+
+            // Clear
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            ctx.fillRect(0, 0, w, h);
+
+            // Grid
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const pos = (h / 4) * i;
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2, pos, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // Center cross
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w / 2 - 10, h / 2);
+            ctx.lineTo(w / 2 + 10, h / 2);
+            ctx.moveTo(w / 2, h / 2 - 10);
+            ctx.lineTo(w / 2, h / 2 + 10);
+            ctx.stroke();
+
+            // Vessel indicator
+            ctx.fillStyle = '#0f0';
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Velocity vector
+            ctx.strokeStyle = 'rgba(0, 255, 100, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(w / 2, h / 2);
+            ctx.lineTo(w / 2 + Math.cos(gameState.yaw * Math.PI / 180) * 30, h / 2 + Math.sin(gameState.yaw * Math.PI / 180) * 30);
+            ctx.stroke();
+        }
+
+        // Update UI
+        function updateUI() {
+            // Simulate orbital decay/changes
+            gameState.altitude += (gameState.engineOn ? gameState.throttle / 1000 : -0.001);
+            gameState.altitude = Math.max(gameState.altitude, 5);
+            gameState.velocity = 7.65 + gameState.throttle / 100;
+
+            document.getElementById('altitude').textContent = gameState.altitude.toFixed(1) + ' km';
+            document.getElementById('velocity').textContent = gameState.velocity.toFixed(2);
+            document.getElementById('ap').textContent = gameState.ap.toFixed(0) + ' km';
+            document.getElementById('pe').textContent = gameState.pe.toFixed(0) + ' km';
+            
+            // Time update
+            gameState.time += 1;
+            const hours = Math.floor(gameState.time / 3600);
+            const minutes = Math.floor((gameState.time % 3600) / 60);
+            const seconds = gameState.time % 60;
+            document.getElementById('time').textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('met').textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Resources
+            gameState.fuel = Math.max(0, gameState.fuel - (gameState.engineOn ? gameState.throttle / 500 : 0));
+            document.getElementById('fuel').textContent = gameState.fuel.toFixed(0);
+            document.getElementById('gforce').textContent = (gameState.throttle / 100).toFixed(2);
+            document.getElementById('status').textContent = gameState.altitude > 20 ? 'ORBIT' : 'FLIGHT';
+        }
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation loop
+        let frameCount = 0;
+        let lastFpsUpdate = Date.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update rotation
+            vesselGroup.rotation.x = (gameState.pitch * Math.PI / 180) * 0.5;
+            vesselGroup.rotation.y = (gameState.yaw * Math.PI / 180) * 0.5;
+            vesselGroup.rotation.z = (gameState.roll * Math.PI / 180) * 0.5;
+
+            // Update vessel position to show altitude
+            const altitudeScale = (gameState.altitude - 5) / 100;
+            vesselGroup.position.z = 60 + altitudeScale;
+
+            // Engine glow
+            if (gameState.engineOn) {
+                engineGlow.material.opacity = gameState.throttle / 100 * 0.8;
+                
+                // Particle effect (simple)
+                if (Math.random() > 0.7) {
+                    const particleGeometry = new THREE.SphereGeometry(0.2, 4, 4);
+                    const particleMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color().setHSL(Math.random() * 0.1 + 0.05, 1, 0.5)
+                    });
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                    particle.position.copy(engineGlow.position);
+                    particle.velocity = new THREE.Vector3(
+                        (Math.random() - 0.5) * 2,
+                        -Math.random() * 2 - 1,
+                        (Math.random() - 0.5) * 2
+                    );
+                    scene.add(particle);
+
+                    setTimeout(() => scene.remove(particle), 200);
+                }
+            } else {
+                engineGlow.material.opacity = 0;
+            }
+
+            // Orbital mechanics - gentle rotation
+            planet.rotation.y += 0.0001;
+
+            // Update UI
+            updateUI();
+
+            // Draw radar
+            drawRadar();
+
+            // FPS counter
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFpsUpdate > 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+            }
+
+            // Camera follow
+            camera.lookAt(vesselGroup.position);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
