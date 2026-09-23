@@ -165,11 +165,39 @@
                             <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="engineLarge">
                                 🚀<br>Large Engine
                             </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="xenonTank">
+                                💠<br>Xenon Tank
+                            </button>
                             <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="ionEngine">
                                 ⚡<br>Ion Engine
                             </button>
-                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="xenonTank">
-                                💠<br>Xenon Tank
+                        </div>
+                    </div>
+
+                    <!-- Interstellar Travel -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Interstellar Travel</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="pulseDrive">
+                                ☢️<br>Nuclear Pulse Drive
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fusionCore">
+                                ☄️<br>Fusion Core
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="coldSleep">
+                                🛏️<br>Cold Sleep Pod
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="starMap">
+                                🧭<br>Star Map
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="shieldedHull">
+                                🛡️<br>Shielded Hull
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="deepScanner">
+                                🔭<br>Deep Scanner
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="centrifuge">
+                                🌀<br>Centrifuge
                             </button>
                         </div>
                     </div>
@@ -341,12 +369,16 @@
             position: { x: 0, y: 0 },
             velocity: { x: 0, y: 0 },
             rotation: 0,
+            angularVelocity: 0,
             thrust: 0,
             mass: 0,
             fuel: 0,
             maxFuel: 0,
             activeStage: 1,
             stageCount: 1,
+            cog: { x: 0, y: 0 },
+            thrustCenter: { x: 0, y: 0 },
+            universe: { x: 0, y: 0 },
             flightParts: [],
             debris: [],
             spaceOffset: { x: 0, y: 0 },
@@ -546,6 +578,215 @@
                     ctx.ellipse(0, 16, 10, 5, 0, 0, Math.PI * 2);
                     ctx.fill();
                     drawBand(-12, 22, '#64748b');
+                    ctx.restore();
+                }
+            },
+            pulseDrive: {
+                name: 'Nuclear Pulse Drive',
+                mass: 4200,
+                thrust: 120000,
+                width: 28,
+                height: 40,
+                color: '#a3e635',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#111827';
+                    ctx.beginPath();
+                    ctx.moveTo(-13, -20);
+                    ctx.lineTo(13, -20);
+                    ctx.lineTo(18, 8);
+                    ctx.lineTo(10, 18);
+                    ctx.lineTo(-10, 18);
+                    ctx.lineTo(-18, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#d9f99d';
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#14532d';
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -15);
+                    ctx.lineTo(8, -15);
+                    ctx.lineTo(13, 10);
+                    ctx.lineTo(-13, 10);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#86efac';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-11, 0); ctx.lineTo(11, 0);
+                    ctx.moveTo(0, -11); ctx.lineTo(0, 11);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 18, 8, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(250,204,21,0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 18, 15, 7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    drawBand(-12, 20, '#4ade80');
+                    ctx.restore();
+                }
+            },
+            fusionCore: {
+                name: 'Fusion Core',
+                mass: 2800,
+                width: 22,
+                height: 26,
+                color: '#22c55e',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#ecfccb', '#14532d', '#bbf7d0', '#166534');
+                    ctx.beginPath();
+                    ctx.roundRect(-11, -13, 22, 26, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#052e16';
+                    ctx.stroke();
+                    ctx.strokeStyle = '#86efac';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 0); ctx.lineTo(10, 0);
+                    ctx.moveTo(0, -10); ctx.lineTo(0, 10);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            coldSleep: {
+                name: 'Cold Sleep Pod',
+                mass: 1100,
+                width: 18,
+                height: 24,
+                color: '#a78bfa',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#f5f3ff', '#4338ca', '#ddd6fe', '#312e81');
+                    ctx.beginPath();
+                    ctx.roundRect(-9, -12, 18, 24, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#1f2937';
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+                    ctx.fillRect(-6, -6, 12, 10);
+                    ctx.restore();
+                }
+            },
+            starMap: {
+                name: 'Star Map',
+                mass: 700,
+                width: 16,
+                height: 18,
+                color: '#38bdf8',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(-8, -9, 16, 18);
+                    ctx.strokeStyle = '#7dd3fc';
+                    ctx.strokeRect(-8, -9, 16, 18);
+                    for (let i = 0; i < 8; i++) {
+                        const px = -5 + (i % 3) * 4;
+                        const py = -6 + Math.floor(i / 3) * 6;
+                        ctx.beginPath();
+                        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+                        ctx.fillStyle = '#e0f2fe';
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            },
+            shieldedHull: {
+                name: 'Shielded Hull',
+                mass: 1900,
+                width: 18,
+                height: 24,
+                color: '#60a5fa',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#dbeafe', '#1e3a8a', '#93c5fd', '#0f172a');
+                    ctx.fillRect(-9, -12, 18, 24);
+                    ctx.strokeStyle = '#dbeafe';
+                    ctx.strokeRect(-9, -12, 18, 24);
+                    ctx.fillStyle = 'rgba(125,211,252,0.32)';
+                    ctx.fillRect(-5, -8, 10, 16);
+                    ctx.restore();
+                }
+            },
+            deepScanner: {
+                name: 'Deep Scanner',
+                mass: 950,
+                width: 16,
+                height: 20,
+                color: '#f59e0b',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#1f2937';
+                    ctx.beginPath();
+                    ctx.roundRect(-8, -10, 16, 20, 4);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.stroke();
+                    ctx.fillStyle = '#fef3c7';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            centrifuge: {
+                name: 'Centrifuge',
+                mass: 2600,
+                width: 28,
+                height: 28,
+                color: '#f472b6',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#111827';
+                    ctx.beginPath();
+                    ctx.roundRect(-14, -14, 28, 28, 7);
+                    ctx.fill();
+                    ctx.strokeStyle = '#f9a8d4';
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#e0f2fe';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-12, 0); ctx.lineTo(12, 0);
+                    ctx.moveTo(0, -12); ctx.lineTo(0, 12);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#c084fc';
+                    ctx.beginPath();
+                    ctx.moveTo(-2, -18); ctx.lineTo(2, -18);
+                    ctx.moveTo(-2, 18); ctx.lineTo(2, 18);
+                    ctx.moveTo(-18, -2); ctx.lineTo(-18, 2);
+                    ctx.moveTo(18, -2); ctx.lineTo(18, 2);
+                    ctx.stroke();
                     ctx.restore();
                 }
             },
@@ -822,29 +1063,64 @@
             drawBuildMode();
         });
 
-        // Update rocket statistics
-        function updateRocketStats(preserveFuel = false) {
+        function computeMassBalance(parts = rocket.parts) {
             let mass = 0;
+            let weightedX = 0;
+            let weightedY = 0;
             let thrust = 0;
+            let thrustWeightedX = 0;
+            let thrustWeightedY = 0;
             let fuel = 0;
             let maxFuel = 0;
+
+            parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (!partDef) return;
+
+                const partMass = partDef.mass || 0;
+                mass += partMass;
+                weightedX += part.x * partMass;
+                weightedY += part.y * partMass;
+
+                if (partDef.fuel) {
+                    fuel += partDef.fuel;
+                    maxFuel += partDef.fuel;
+                }
+
+                if (part.stage === rocket.activeStage && (partDef.thrust || 0) > 0) {
+                    const partThrust = partDef.thrust || 0;
+                    thrust += partThrust;
+                    thrustWeightedX += part.x * partThrust;
+                    thrustWeightedY += part.y * partThrust;
+                }
+            });
+
+            const cog = mass > 0 ? { x: weightedX / mass, y: weightedY / mass } : { x: 0, y: 0 };
+            const thrustCenter = thrust > 0
+                ? { x: thrustWeightedX / thrust, y: thrustWeightedY / thrust }
+                : { x: cog.x, y: cog.y };
+
+            return { mass, cog, thrust, thrustCenter, fuel, maxFuel };
+        }
+
+        // Update rocket statistics
+        function updateRocketStats(preserveFuel = false) {
             let stageCount = Math.max(1, rocket.stageCount);
+            const balance = computeMassBalance(rocket.parts);
 
             rocket.parts.forEach(part => {
                 const partDef = PARTS[part.type];
                 if (partDef) {
-                    mass += partDef.mass || 0;
-                    if (part.stage === rocket.activeStage) thrust += partDef.thrust || 0;
-                    fuel += partDef.fuel || 0;
-                    maxFuel += partDef.fuel || 0;
                     stageCount = Math.max(stageCount, part.stage || 1);
                 }
             });
 
-            rocket.mass = mass;
-            rocket.thrust = thrust;
-            if (!preserveFuel) rocket.fuel = fuel;
-            rocket.maxFuel = maxFuel;
+            rocket.mass = balance.mass;
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            rocket.thrust = balance.thrust;
+            if (!preserveFuel) rocket.fuel = balance.fuel;
+            rocket.maxFuel = balance.maxFuel;
             rocket.stageCount = Math.max(stageCount, rocket.stageCount);
             rocket.activeStage = Math.min(rocket.activeStage, rocket.stageCount);
             const connectedCount = findConnectedParts().size;
@@ -852,15 +1128,15 @@
             undoBtn.disabled = rocket.parts.length === 0;
 
             // Update UI
-            document.getElementById('stat-mass').textContent = (mass/1000).toFixed(1);
-            document.getElementById('stat-thrust').textContent = (thrust/1000).toFixed(1);
-            document.getElementById('stat-fuel').textContent = maxFuel ? Math.round((rocket.fuel / maxFuel) * 100) : '0';
+            document.getElementById('stat-mass').textContent = (rocket.mass/1000).toFixed(1);
+            document.getElementById('stat-thrust').textContent = (rocket.thrust/1000).toFixed(1);
+            document.getElementById('stat-fuel').textContent = rocket.maxFuel ? Math.round((rocket.fuel / rocket.maxFuel) * 100) : '0';
             document.getElementById('stat-stage').textContent = `${rocket.activeStage}/${rocket.stageCount}`;
             
             // Calculate delta-v using the rocket equation
-            if (thrust > 0) {
-                const exhaustVelocity = thrust / (rocket.mass * 0.1); // Approximate mass flow rate
-                const massRatio = mass / (mass * 0.7); // Assuming 30% of mass is fuel
+            if (rocket.thrust > 0) {
+                const exhaustVelocity = rocket.thrust / (rocket.mass * 0.1);
+                const massRatio = rocket.mass / (rocket.mass * 0.7);
                 const deltav = exhaustVelocity * Math.log(massRatio);
                 document.getElementById('stat-deltav').textContent = deltav.toFixed(0);
             } else {
@@ -918,6 +1194,18 @@
                 });
             });
 
+            const balance = computeMassBalance(rocket.parts);
+            const cogMarkerX = buildCenter.x + balance.cog.x;
+            const cogMarkerY = buildCenter.y + balance.cog.y;
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(cogMarkerX - 7, cogMarkerY);
+            ctx.lineTo(cogMarkerX + 7, cogMarkerY);
+            ctx.moveTo(cogMarkerX, cogMarkerY - 7);
+            ctx.lineTo(cogMarkerX, cogMarkerY + 7);
+            ctx.stroke();
+
             if (gameState === 'building' && selectedPart && cursorPosition) {
                 const previewX = Math.round((cursorPosition.x - buildCenter.x) / 20) * 20;
                 const previewY = Math.round((cursorPosition.y - buildCenter.y) / 20) * 20;
@@ -944,12 +1232,13 @@
         const COAST_DRAG = 0.985;
         const BRAKE_DRAG = 0.95;
         let lastFlightTime = 0;
-        const spaceStars = Array.from({ length: 180 }, (_, index) => {
+        const UNIVERSE_SIZE = 60000;
+        const spaceStars = Array.from({ length: 420 }, (_, index) => {
             const seed = (index * 9301 + 49297) % 233280;
             const secondSeed = (seed * 9301 + 49297) % 233280;
             return {
-                x: seed / 233280,
-                y: secondSeed / 233280,
+                x: (seed / 233280) * UNIVERSE_SIZE,
+                y: (secondSeed / 233280) * UNIVERSE_SIZE,
                 size: index % 13 === 0 ? 2 : index % 4 === 0 ? 1.4 : 0.8,
                 layer: index % 3
             };
@@ -961,9 +1250,13 @@
 
         function drawSpaceBackground() {
             const { x: offsetX, y: offsetY } = rocket.spaceOffset;
+            const cameraX = rocket.universe.x || 0;
+            const cameraY = rocket.universe.y || 0;
             ctx.fillStyle = '#020617';
             ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
+            const nebulaCenterX = (canvasWidth * 0.52 - cameraX * 0.045 + canvasWidth * 2) % (canvasWidth * 4) - canvasWidth * 2;
+            const nebulaCenterY = (canvasHeight * 0.38 - cameraY * 0.032 + canvasHeight * 2) % (canvasHeight * 4) - canvasHeight * 2;
             const nebula = ctx.createLinearGradient(0, canvasHeight, canvasWidth, 0);
             nebula.addColorStop(0, 'rgba(14, 116, 144, 0.24)');
             nebula.addColorStop(0.42, 'rgba(30, 41, 59, 0.04)');
@@ -971,18 +1264,23 @@
             nebula.addColorStop(1, 'rgba(190, 24, 93, 0.08)');
             ctx.fillStyle = nebula;
             ctx.beginPath();
-            ctx.ellipse(canvasWidth * 0.52, canvasHeight * 0.38, canvasWidth * 0.78, canvasHeight * 0.2, -0.28, 0, Math.PI * 2);
+            ctx.ellipse(canvasWidth * 0.5 + nebulaCenterX * 0.5, canvasHeight * 0.5 + nebulaCenterY * 0.35, canvasWidth * 0.78, canvasHeight * 0.2, -0.28, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
+            const fieldWidth = canvasWidth * 4;
+            const fieldHeight = canvasHeight * 4;
             spaceStars.forEach(star => {
-                const parallax = [0.22, 0.5, 1][star.layer];
-                const x = wrap(star.x * canvasWidth + offsetX * parallax, canvasWidth);
-                const y = wrap(star.y * canvasHeight + offsetY * parallax, canvasHeight);
+                const parallax = [0.18, 0.42, 0.8][star.layer];
+                const x = ((star.x - cameraX * parallax + fieldWidth * 0.5) % fieldWidth + fieldWidth) % fieldWidth - fieldWidth * 0.5;
+                const y = ((star.y - cameraY * parallax + fieldHeight * 0.5) % fieldHeight + fieldHeight) % fieldHeight - fieldHeight * 0.5;
+                const px = canvasWidth * 0.5 + x;
+                const py = canvasHeight * 0.5 + y;
+                if (px < -40 || px > canvasWidth + 40 || py < -40 || py > canvasHeight + 40) return;
                 ctx.fillStyle = star.layer === 2 ? 'rgba(186, 230, 253, 0.9)' : 'rgba(226, 232, 240, 0.62)';
                 ctx.beginPath();
-                ctx.arc(x, y, star.size, 0, Math.PI * 2);
+                ctx.arc(px, py, star.size, 0, Math.PI * 2);
                 ctx.fill();
             });
 
@@ -1099,6 +1397,9 @@
                     rotation: 0,
                     spin: index % 2 ? 0.025 : -0.025
                 }));
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
             if (rocket.debris.length) {
                 buildStatus.textContent = `${rocket.debris.length} unconnected part${rocket.debris.length === 1 ? '' : 's'} broke loose.`;
             }
@@ -1198,6 +1499,8 @@
                 rocket.position = { x: canvasWidth / 2, y: canvasHeight - 220 };
                 rocket.velocity = { x: 0, y: 0 };
                 rocket.rotation = 0;
+                rocket.angularVelocity = 0;
+                rocket.universe = { x: 0, y: 0 };
                 rocket.spaceOffset = { x: 0, y: 0 };
                 rocket.hasMoved = false;
                 buildStatus.textContent = 'Flight active. Use W/S to thrust and reverse, A/D to rotate.';
@@ -1244,27 +1547,45 @@
             const frameScale = Math.min(2, Math.max(0.25, (timestamp - lastFlightTime) / 16.667));
             lastFlightTime = timestamp;
 
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+
             // Handle input
             const turningLeft = controlKeys.left.some(key => keys[key]);
             const turningRight = controlKeys.right.some(key => keys[key]);
             const thrusting = controlKeys.thrust.some(key => keys[key]) && rocket.fuel > 0;
             const reversing = controlKeys.reverse.some(key => keys[key]);
             const movingInput = (thrusting || reversing) && rocket.thrust > 0;
-            if (turningLeft) rocket.rotation -= 0.02;
-            if (turningRight) rocket.rotation += 0.02;
+
             if (thrusting || reversing) {
-                // Apply thrust
                 const thrustDirection = reversing ? -1 : 1;
-                const thrust = rocket.thrust / rocket.mass * thrustDirection;
+                const thrust = rocket.thrust / Math.max(rocket.mass, 1) * thrustDirection;
                 const thrustAxisX = Math.sin(rocket.rotation);
                 const thrustAxisY = -Math.cos(rocket.rotation);
+                const leverX = rocket.thrustCenter.x - rocket.cog.x;
+                const leverY = rocket.thrustCenter.y - rocket.cog.y;
+                const torqueFactor = (leverX * thrustAxisY - leverY * thrustAxisX) * 0.03;
+
+                rocket.angularVelocity += (torqueFactor * thrust * 3.2 + (turningLeft ? -0.015 : 0) + (turningRight ? 0.015 : 0)) * frameScale;
+
                 rocket.velocity.x += thrustAxisX * thrust * 0.016 * frameScale;
                 rocket.velocity.y += thrustAxisY * thrust * 0.016 * frameScale;
                 rocket.fuel = Math.max(0, rocket.fuel - 0.35);
                 document.getElementById('stat-fuel').textContent = rocket.maxFuel
                     ? Math.round((rocket.fuel / rocket.maxFuel) * 100)
                     : '0';
+            } else {
+                rocket.angularVelocity *= 0.985;
             }
+
+            if (turningLeft || turningRight) {
+                rocket.angularVelocity += (turningLeft ? -0.018 : 0) * frameScale;
+                rocket.angularVelocity += (turningRight ? 0.018 : 0) * frameScale;
+            }
+
+            rocket.angularVelocity *= 0.96;
+            rocket.rotation += rocket.angularVelocity * frameScale;
 
             if (movingInput) rocket.hasMoved = true;
 
@@ -1284,6 +1605,8 @@
             // Update position
             rocket.position.x += rocket.velocity.x * frameScale;
             rocket.position.y += rocket.velocity.y * frameScale;
+            rocket.universe.x += rocket.velocity.x * 28 * frameScale;
+            rocket.universe.y += rocket.velocity.y * 28 * frameScale;
 
             if (rocket.position.x < FLIGHT_MARGIN) {
                 rocket.position.x = FLIGHT_MARGIN;
@@ -1314,9 +1637,18 @@
             rocket.flightParts.forEach(part => {
                 const partDef = PARTS[part.type];
                 if (partDef && partDef.render) {
-                    partDef.render(part.x, part.y, 0);
+                    partDef.render(part.x - rocket.cog.x, part.y - rocket.cog.y, 0);
                 }
             });
+
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-7, 0);
+            ctx.lineTo(7, 0);
+            ctx.moveTo(0, -7);
+            ctx.lineTo(0, 7);
+            ctx.stroke();
 
             drawActiveEngineExhaust(thrusting, reversing);
             
@@ -1349,10 +1681,15 @@
             rocket.parts = [];
             rocket.position = { x: 0, y: 0 };
             rocket.velocity = { x: 0, y: 0 };
+            rocket.rotation = 0;
+            rocket.angularVelocity = 0;
+            rocket.universe = { x: 0, y: 0 };
             rocket.mass = 0;
             rocket.thrust = 0;
             rocket.fuel = 0;
             rocket.maxFuel = 0;
+            rocket.cog = { x: 0, y: 0 };
+            rocket.thrustCenter = { x: 0, y: 0 };
             rocket.activeStage = 1;
             rocket.stageCount = 1;
             rocket.flightParts = [];
