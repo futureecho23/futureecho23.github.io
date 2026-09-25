@@ -196,6 +196,9 @@
                             <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="deepScanner">
                                 🔭<br>Deep Scanner
                             </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="nuclearPellet">
+                                ⚛️<br>Nuclear Pellet
+                            </button>
                             <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="centrifuge">
                                 🌀<br>Centrifuge
                             </button>
@@ -280,6 +283,7 @@
                         <div>Thrust: <span id="stat-thrust">0</span> kN</div>
                         <div>Delta-v: <span id="stat-deltav">0</span> m/s</div>
                         <div>Fuel: <span id="stat-fuel">0</span>%</div>
+                        <div>Pulse fuel: <span id="stat-pulse-fuel">0</span>%</div>
                         <div>Stage: <span id="stat-stage">1</span></div>
                     </div>
                 </div>
@@ -374,6 +378,8 @@
             mass: 0,
             fuel: 0,
             maxFuel: 0,
+            pulseFuel: 0,
+            maxPulseFuel: 0,
             activeStage: 1,
             stageCount: 1,
             cog: { x: 0, y: 0 },
@@ -752,6 +758,36 @@
                     ctx.restore();
                 }
             },
+            nuclearPellet: {
+                name: 'Nuclear Pellet',
+                mass: 900,
+                width: 18,
+                height: 22,
+                color: '#bef264',
+                pulseFuel: 100,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#ecfccb', '#365314', '#bef264', '#1a2e05');
+                    ctx.beginPath();
+                    ctx.roundRect(-9, -11, 18, 22, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#d9f99d';
+                    ctx.stroke();
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#3f6212';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -5); ctx.lineTo(8, -5);
+                    ctx.moveTo(-8, 5); ctx.lineTo(8, 5);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
             centrifuge: {
                 name: 'Centrifuge',
                 mass: 2600,
@@ -1072,6 +1108,8 @@
             let thrustWeightedY = 0;
             let fuel = 0;
             let maxFuel = 0;
+            let pulseFuel = 0;
+            let maxPulseFuel = 0;
 
             parts.forEach(part => {
                 const partDef = PARTS[part.type];
@@ -1085,6 +1123,10 @@
                 if (partDef.fuel) {
                     fuel += partDef.fuel;
                     maxFuel += partDef.fuel;
+                }
+                if (partDef.pulseFuel) {
+                    pulseFuel += partDef.pulseFuel;
+                    maxPulseFuel += partDef.pulseFuel;
                 }
 
                 if (part.stage === rocket.activeStage && (partDef.thrust || 0) > 0) {
@@ -1100,7 +1142,7 @@
                 ? { x: thrustWeightedX / thrust, y: thrustWeightedY / thrust }
                 : { x: cog.x, y: cog.y };
 
-            return { mass, cog, thrust, thrustCenter, fuel, maxFuel };
+            return { mass, cog, thrust, thrustCenter, fuel, maxFuel, pulseFuel, maxPulseFuel };
         }
 
         // Update rocket statistics
@@ -1121,6 +1163,8 @@
             rocket.thrust = balance.thrust;
             if (!preserveFuel) rocket.fuel = balance.fuel;
             rocket.maxFuel = balance.maxFuel;
+            if (!preserveFuel) rocket.pulseFuel = balance.pulseFuel;
+            rocket.maxPulseFuel = balance.maxPulseFuel;
             rocket.stageCount = Math.max(stageCount, rocket.stageCount);
             rocket.activeStage = Math.min(rocket.activeStage, rocket.stageCount);
             const connectedCount = findConnectedParts().size;
@@ -1131,6 +1175,7 @@
             document.getElementById('stat-mass').textContent = (rocket.mass/1000).toFixed(1);
             document.getElementById('stat-thrust').textContent = (rocket.thrust/1000).toFixed(1);
             document.getElementById('stat-fuel').textContent = rocket.maxFuel ? Math.round((rocket.fuel / rocket.maxFuel) * 100) : '0';
+            document.getElementById('stat-pulse-fuel').textContent = rocket.maxPulseFuel ? Math.round((rocket.pulseFuel / rocket.maxPulseFuel) * 100) : '0';
             document.getElementById('stat-stage').textContent = `${rocket.activeStage}/${rocket.stageCount}`;
             
             // Calculate delta-v using the rocket equation
@@ -1484,8 +1529,14 @@
                 buildStatus.textContent = 'Add an engine before launching.';
                 return;
             }
-            if (rocket.fuel <= 0) {
-                buildStatus.textContent = 'Add a fuel tank before launching.';
+            const hasConventionalEngine = rocket.parts.some(part =>
+                part.stage === rocket.activeStage && (PARTS[part.type]?.thrust || 0) > 0 && part.type !== 'pulseDrive'
+            );
+            const hasPulseDrive = rocket.parts.some(part =>
+                part.stage === rocket.activeStage && part.type === 'pulseDrive'
+            );
+            if ((hasConventionalEngine && rocket.fuel <= 0) || (hasPulseDrive && rocket.pulseFuel <= 0)) {
+                buildStatus.textContent = hasPulseDrive ? 'Add Nuclear Pellets for the pulse drive.' : 'Add a fuel tank before launching.';
                 return;
             }
             if (rocket.parts.length > 0 && rocket.mass > 0) {
@@ -1554,7 +1605,10 @@
             // Handle input
             const turningLeft = controlKeys.left.some(key => keys[key]);
             const turningRight = controlKeys.right.some(key => keys[key]);
-            const thrusting = controlKeys.thrust.some(key => keys[key]) && rocket.fuel > 0;
+            const pulseDriveActive = rocket.flightParts.some(part => part.stage === rocket.activeStage && part.type === 'pulseDrive');
+            const conventionalDriveActive = rocket.flightParts.some(part => part.stage === rocket.activeStage && part.type !== 'pulseDrive' && (PARTS[part.type]?.thrust || 0) > 0);
+            const hasDriveFuel = (pulseDriveActive && rocket.pulseFuel > 0) || (conventionalDriveActive && rocket.fuel > 0);
+            const thrusting = controlKeys.thrust.some(key => keys[key]) && hasDriveFuel;
             const reversing = controlKeys.reverse.some(key => keys[key]);
             const movingInput = (thrusting || reversing) && rocket.thrust > 0;
 
@@ -1571,9 +1625,13 @@
 
                 rocket.velocity.x += thrustAxisX * thrust * 0.016 * frameScale;
                 rocket.velocity.y += thrustAxisY * thrust * 0.016 * frameScale;
-                rocket.fuel = Math.max(0, rocket.fuel - 0.35);
+                if (pulseDriveActive) rocket.pulseFuel = Math.max(0, rocket.pulseFuel - 0.12);
+                if (conventionalDriveActive) rocket.fuel = Math.max(0, rocket.fuel - 0.35);
                 document.getElementById('stat-fuel').textContent = rocket.maxFuel
                     ? Math.round((rocket.fuel / rocket.maxFuel) * 100)
+                    : '0';
+                document.getElementById('stat-pulse-fuel').textContent = rocket.maxPulseFuel
+                    ? Math.round((rocket.pulseFuel / rocket.maxPulseFuel) * 100)
                     : '0';
             } else {
                 rocket.angularVelocity *= 0.985;
@@ -1688,6 +1746,8 @@
             rocket.thrust = 0;
             rocket.fuel = 0;
             rocket.maxFuel = 0;
+            rocket.pulseFuel = 0;
+            rocket.maxPulseFuel = 0;
             rocket.cog = { x: 0, y: 0 };
             rocket.thrustCenter = { x: 0, y: 0 };
             rocket.activeStage = 1;
