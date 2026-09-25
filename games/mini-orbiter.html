@@ -1624,7 +1624,7 @@
                 const acceleration = thrust * THRUST_ACCELERATION_SCALE;
                 const torqueScale = pulseDriveActive ? 0.18 : 1;
 
-                rocket.angularVelocity += (torqueFactor * acceleration * 0.8 * torqueScale + (turningLeft ? -0.015 : 0) + (turningRight ? 0.015 : 0)) * frameScale;
+                rocket.angularVelocity += torqueFactor * acceleration * 0.8 * torqueScale * frameScale;
 
                 rocket.velocity.x += thrustAxisX * acceleration * frameScale;
                 rocket.velocity.y += thrustAxisY * acceleration * frameScale;
@@ -1641,11 +1641,11 @@
             }
 
             if (turningLeft || turningRight) {
-                rocket.angularVelocity += (turningLeft ? -0.018 : 0) * frameScale;
-                rocket.angularVelocity += (turningRight ? 0.018 : 0) * frameScale;
+                rocket.angularVelocity += (turningLeft ? -0.0035 : 0) * frameScale;
+                rocket.angularVelocity += (turningRight ? 0.0035 : 0) * frameScale;
             }
 
-            rocket.angularVelocity *= 0.96;
+            rocket.angularVelocity *= 0.88;
             rocket.rotation += rocket.angularVelocity * frameScale;
 
             if (movingInput) rocket.hasMoved = true;
