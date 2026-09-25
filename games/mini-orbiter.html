@@ -590,7 +590,7 @@
             pulseDrive: {
                 name: 'Nuclear Pulse Drive',
                 mass: 4200,
-                thrust: 120000,
+                thrust: 60000,
                 width: 28,
                 height: 40,
                 color: '#a3e635',
@@ -1274,7 +1274,6 @@
         // Launch mode physics
         const MAX_FLIGHT_SPEED = 4;
         const THRUST_ACCELERATION_SCALE = 0.0035;
-        const MAX_ANGULAR_SPEED = 0.08;
         const FLIGHT_MARGIN = 42;
         const COAST_DRAG = 0.985;
         const BRAKE_DRAG = 0.95;
@@ -1623,8 +1622,9 @@
                 const leverY = rocket.thrustCenter.y - rocket.cog.y;
                 const torqueFactor = (leverX * thrustAxisY - leverY * thrustAxisX) * 0.03;
                 const acceleration = thrust * THRUST_ACCELERATION_SCALE;
+                const torqueScale = pulseDriveActive ? 0.18 : 1;
 
-                rocket.angularVelocity += (torqueFactor * acceleration * 0.8 + (turningLeft ? -0.015 : 0) + (turningRight ? 0.015 : 0)) * frameScale;
+                rocket.angularVelocity += (torqueFactor * acceleration * 0.8 * torqueScale + (turningLeft ? -0.015 : 0) + (turningRight ? 0.015 : 0)) * frameScale;
 
                 rocket.velocity.x += thrustAxisX * acceleration * frameScale;
                 rocket.velocity.y += thrustAxisY * acceleration * frameScale;
@@ -1646,7 +1646,6 @@
             }
 
             rocket.angularVelocity *= 0.96;
-            rocket.angularVelocity = Math.max(-MAX_ANGULAR_SPEED, Math.min(MAX_ANGULAR_SPEED, rocket.angularVelocity));
             rocket.rotation += rocket.angularVelocity * frameScale;
 
             if (movingInput) rocket.hasMoved = true;
