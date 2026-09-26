@@ -1688,7 +1688,6 @@
             if (gameState !== 'flying' || rocket.activeStage >= rocket.stageCount) return;
             const spentStage = rocket.activeStage;
             const nextStage = spentStage + 1;
-            const separationNudge = 0.18;
             const separationId = `stage-${spentStage}-${Date.now()}`;
             const separatingParts = rocket.flightParts.filter(part => part.stage === spentStage);
             separatingParts.forEach((part, index) => {
@@ -1699,8 +1698,8 @@
                         y: rocket.position.y + part.y
                     },
                     velocity: {
-                        x: rocket.velocity.x + (index % 2 ? separationNudge : -separationNudge),
-                        y: rocket.velocity.y + separationNudge * 0.35
+                        x: rocket.velocity.x,
+                        y: rocket.velocity.y
                     },
                     rotation: 0,
                     spin: index % 2 ? 0.01 : -0.01,
