@@ -1074,8 +1074,64 @@
             drawBuildMode();
         });
 
+        function switchToDebrisVessel(event) {
+            const { x, y } = getCanvasPosition(event);
+            const target = rocket.debris.find(debris => {
+                const partDef = PARTS[debris.type] || {};
+                const hitRadius = Math.max(18, Math.max(partDef.width || 18, partDef.height || 18) / 2 + 8);
+                return Math.hypot(debris.position.x - x, debris.position.y - y) <= hitRadius;
+            });
+            if (!target || !target.separationId) return false;
+
+            const selectedDebris = rocket.debris.filter(debris => debris.separationId === target.separationId);
+            const center = selectedDebris.reduce((sum, debris) => ({
+                x: sum.x + debris.position.x / selectedDebris.length,
+                y: sum.y + debris.position.y / selectedDebris.length
+            }), { x: 0, y: 0 });
+            const velocity = selectedDebris.reduce((sum, debris) => ({
+                x: sum.x + debris.velocity.x / selectedDebris.length,
+                y: sum.y + debris.velocity.y / selectedDebris.length
+            }), { x: 0, y: 0 });
+
+            rocket.flightParts.forEach((part, index) => {
+                rocket.debris.push({
+                    ...part,
+                    position: {
+                        x: rocket.position.x + part.x - rocket.cog.x,
+                        y: rocket.position.y + part.y - rocket.cog.y
+                    },
+                    velocity: { x: rocket.velocity.x, y: rocket.velocity.y },
+                    rotation: rocket.rotation,
+                    spin: index % 2 ? 0.01 : -0.01,
+                    separationId: `active-${Date.now()}`
+                });
+            });
+
+            rocket.flightParts = selectedDebris.map(debris => ({
+                ...debris,
+                x: debris.position.x - center.x,
+                y: debris.position.y - center.y
+            }));
+            rocket.debris = rocket.debris.filter(debris => debris.separationId !== target.separationId);
+            rocket.position = center;
+            rocket.velocity = velocity;
+            rocket.angularVelocity = 0;
+            rocket.activeStage = target.stage || rocket.activeStage;
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.mass = balance.mass;
+            rocket.thrust = balance.thrust;
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            buildStatus.textContent = 'Vessel switched. Flight controls now follow the selected separated stage.';
+            return true;
+        }
+
         // Handle canvas clicks
         canvas.addEventListener('click', (e) => {
+            if (gameState === 'flying') {
+                switchToDebrisVessel(e);
+                return;
+            }
             if (gameState !== 'building' || !selectedPart) return;
 
             const { x, y } = getCanvasPosition(e);
@@ -1566,6 +1622,8 @@
             if (gameState !== 'flying' || rocket.activeStage >= rocket.stageCount) return;
             const spentStage = rocket.activeStage;
             const nextStage = spentStage + 1;
+            const separationNudge = 0.18;
+            const separationId = `stage-${spentStage}-${Date.now()}`;
             const separatingParts = rocket.flightParts.filter(part => part.stage === spentStage);
             separatingParts.forEach((part, index) => {
                 rocket.debris.push({
@@ -1575,11 +1633,12 @@
                         y: rocket.position.y + part.y
                     },
                     velocity: {
-                        x: rocket.velocity.x + (index % 2 ? 0.8 : -0.8),
-                        y: rocket.velocity.y + 0.5
+                        x: rocket.velocity.x + (index % 2 ? separationNudge : -separationNudge),
+                        y: rocket.velocity.y + separationNudge * 0.35
                     },
                     rotation: 0,
-                    spin: index % 2 ? 0.025 : -0.025
+                    spin: index % 2 ? 0.01 : -0.01,
+                    separationId
                 });
             });
             rocket.flightParts = rocket.flightParts.filter(part => part.stage !== spentStage);
