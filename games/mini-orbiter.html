@@ -1334,6 +1334,7 @@
         const COAST_DRAG = 0.985;
         const BRAKE_DRAG = 0.95;
         let lastFlightTime = 0;
+        let universeTime = 0;
         const UNIVERSE_SIZE = 60000;
         const spaceStars = Array.from({ length: 420 }, (_, index) => {
             const seed = (index * 9301 + 49297) % 233280;
@@ -1348,6 +1349,70 @@
 
         function wrap(value, size) {
             return ((value % size) + size) % size;
+        }
+
+        const celestialBodies = [
+            {
+                x: 900, y: -500, radius: 44, color: '#2563eb', highlight: '#93c5fd',
+                moons: [{ radius: 74, size: 8, color: '#94a3b8', speed: 0.45, phase: 0.5 }]
+            },
+            {
+                x: -1500, y: 980, radius: 30, color: '#b45309', highlight: '#fbbf24',
+                rings: true,
+                moons: [
+                    { radius: 58, size: 5, color: '#cbd5e1', speed: -0.7, phase: 1.2 },
+                    { radius: 88, size: 4, color: '#64748b', speed: 0.3, phase: 2.4 }
+                ]
+            },
+            {
+                x: 2600, y: 1700, radius: 64, color: '#166534', highlight: '#86efac',
+                moons: [{ radius: 102, size: 10, color: '#d6d3d1', speed: 0.2, phase: 2.1 }]
+            },
+            {
+                x: -3600, y: -2200, radius: 22, color: '#9333ea', highlight: '#e9d5ff',
+                moons: []
+            }
+        ];
+
+        function drawCelestialBodies(cameraX, cameraY) {
+            const worldScale = 0.08;
+            celestialBodies.forEach(body => {
+                const bodyX = canvasWidth * 0.5 + (body.x - cameraX) * worldScale;
+                const bodyY = canvasHeight * 0.5 + (body.y - cameraY) * worldScale;
+                if (bodyX < -140 || bodyX > canvasWidth + 140 || bodyY < -140 || bodyY > canvasHeight + 140) return;
+
+                body.moons.forEach(moon => {
+                    const angle = universeTime * moon.speed + moon.phase;
+                    const moonX = bodyX + Math.cos(angle) * moon.radius * worldScale;
+                    const moonY = bodyY + Math.sin(angle) * moon.radius * worldScale;
+                    ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(bodyX, bodyY, moon.radius * worldScale, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = moon.color;
+                    ctx.beginPath();
+                    ctx.arc(moonX, moonY, moon.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                const planetGlow = ctx.createRadialGradient(bodyX - body.radius * 0.35, bodyY - body.radius * 0.35, 2, bodyX, bodyY, body.radius * 1.2);
+                planetGlow.addColorStop(0, body.highlight);
+                planetGlow.addColorStop(0.38, body.color);
+                planetGlow.addColorStop(1, 'rgba(2, 6, 23, 0.2)');
+                ctx.fillStyle = planetGlow;
+                ctx.beginPath();
+                ctx.arc(bodyX, bodyY, body.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (body.rings) {
+                    ctx.strokeStyle = 'rgba(253, 186, 116, 0.65)';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.ellipse(bodyX, bodyY, body.radius * 1.8, body.radius * 0.42, -0.18, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
         }
 
         function drawSpaceBackground() {
@@ -1385,6 +1450,7 @@
                 ctx.arc(px, py, star.size, 0, Math.PI * 2);
                 ctx.fill();
             });
+            drawCelestialBodies(cameraX, cameraY);
 
             const speed = Math.hypot(rocket.velocity.x, rocket.velocity.y);
             if (gameState === 'flying' && speed > 1.2) {
@@ -1655,6 +1721,7 @@
             if (gameState !== 'flying') return;
 
             if (!lastFlightTime) lastFlightTime = timestamp;
+            universeTime = timestamp * 0.001;
             const frameScale = Math.min(2, Math.max(0.25, (timestamp - lastFlightTime) / 16.667));
             lastFlightTime = timestamp;
 
