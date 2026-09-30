@@ -1092,29 +1092,36 @@
                 x: sum.x + debris.velocity.x / selectedDebris.length,
                 y: sum.y + debris.velocity.y / selectedDebris.length
             }), { x: 0, y: 0 });
+            const vesselRotation = target.rotation || 0;
+            const cosRotation = Math.cos(vesselRotation);
+            const sinRotation = Math.sin(vesselRotation);
 
+            const formerVesselId = `active-${Date.now()}`;
             rocket.flightParts.forEach((part, index) => {
+                const relativeX = part.x - rocket.cog.x;
+                const relativeY = part.y - rocket.cog.y;
                 rocket.debris.push({
                     ...part,
                     position: {
-                        x: rocket.position.x + part.x - rocket.cog.x,
-                        y: rocket.position.y + part.y - rocket.cog.y
+                        x: rocket.position.x + relativeX * Math.cos(rocket.rotation) - relativeY * Math.sin(rocket.rotation),
+                        y: rocket.position.y + relativeX * Math.sin(rocket.rotation) + relativeY * Math.cos(rocket.rotation)
                     },
                     velocity: { x: rocket.velocity.x, y: rocket.velocity.y },
                     rotation: rocket.rotation,
-                    spin: index % 2 ? 0.01 : -0.01,
-                    separationId: `active-${Date.now()}`
+                    spin: 0,
+                    separationId: formerVesselId
                 });
             });
 
             rocket.flightParts = selectedDebris.map(debris => ({
                 ...debris,
-                x: debris.position.x - center.x,
-                y: debris.position.y - center.y
+                x: (debris.position.x - center.x) * cosRotation + (debris.position.y - center.y) * sinRotation,
+                y: -(debris.position.x - center.x) * sinRotation + (debris.position.y - center.y) * cosRotation
             }));
             rocket.debris = rocket.debris.filter(debris => debris.separationId !== target.separationId);
             rocket.position = center;
             rocket.velocity = velocity;
+            rocket.rotation = vesselRotation;
             rocket.angularVelocity = 0;
             rocket.activeStage = target.stage || rocket.activeStage;
             const balance = computeMassBalance(rocket.flightParts);
@@ -1122,6 +1129,8 @@
             rocket.thrust = balance.thrust;
             rocket.cog = balance.cog;
             rocket.thrustCenter = balance.thrustCenter;
+            rocket.position.x += balance.cog.x * cosRotation - balance.cog.y * sinRotation;
+            rocket.position.y += balance.cog.x * sinRotation + balance.cog.y * cosRotation;
             buildStatus.textContent = 'Vessel switched. Flight controls now follow the selected separated stage.';
             return true;
         }
@@ -1689,20 +1698,24 @@
             const spentStage = rocket.activeStage;
             const nextStage = spentStage + 1;
             const separationId = `stage-${spentStage}-${Date.now()}`;
+            const cosRotation = Math.cos(rocket.rotation);
+            const sinRotation = Math.sin(rocket.rotation);
             const separatingParts = rocket.flightParts.filter(part => part.stage === spentStage);
             separatingParts.forEach((part, index) => {
+                const relativeX = part.x - rocket.cog.x;
+                const relativeY = part.y - rocket.cog.y;
                 rocket.debris.push({
                     ...part,
                     position: {
-                        x: rocket.position.x + part.x,
-                        y: rocket.position.y + part.y
+                        x: rocket.position.x + relativeX * cosRotation - relativeY * sinRotation,
+                        y: rocket.position.y + relativeX * sinRotation + relativeY * cosRotation
                     },
                     velocity: {
                         x: rocket.velocity.x,
                         y: rocket.velocity.y
                     },
-                    rotation: 0,
-                    spin: index % 2 ? 0.01 : -0.01,
+                    rotation: rocket.rotation,
+                    spin: 0,
                     separationId
                 });
             });
@@ -1744,8 +1757,7 @@
                 const thrustAxisX = Math.sin(rocket.rotation);
                 const thrustAxisY = -Math.cos(rocket.rotation);
                 const leverX = rocket.thrustCenter.x - rocket.cog.x;
-                const leverY = rocket.thrustCenter.y - rocket.cog.y;
-                const torqueFactor = (leverX * thrustAxisY - leverY * thrustAxisX) * 0.03;
+                const torqueFactor = -leverX * thrustDirection * 0.03;
                 const acceleration = thrust * THRUST_ACCELERATION_SCALE;
                 const torqueScale = pulseDriveActive ? 0.18 : 1;
 
