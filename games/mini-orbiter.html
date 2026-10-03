@@ -1339,12 +1339,25 @@
         // Launch mode physics
         const MAX_FLIGHT_SPEED = 4;
         const THRUST_ACCELERATION_SCALE = 0.0035;
-        const FLIGHT_MARGIN = 42;
+        const FLIGHT_MARGIN = 200;
         const COAST_DRAG = 0.985;
         const BRAKE_DRAG = 0.95;
+        const WORLD_WIDTH = 18000;
+        const WORLD_HEIGHT = 12000;
         let lastFlightTime = 0;
         let universeTime = 0;
         const UNIVERSE_SIZE = 60000;
+
+        function getCameraPosition() {
+            const cameraX = Math.max(0, Math.min(rocket.position.x - canvasWidth * 0.5, WORLD_WIDTH - canvasWidth));
+            const cameraY = Math.max(0, Math.min(rocket.position.y - canvasHeight * 0.5, WORLD_HEIGHT - canvasHeight));
+            return { x: cameraX, y: cameraY };
+        }
+
+        function worldToScreen(x, y) {
+            const camera = getCameraPosition();
+            return { x: x - camera.x, y: y - camera.y };
+        }
         const spaceStars = Array.from({ length: 420 }, (_, index) => {
             const seed = (index * 9301 + 49297) % 233280;
             const secondSeed = (seed * 9301 + 49297) % 233280;
@@ -1426,8 +1439,9 @@
 
         function drawSpaceBackground() {
             const { x: offsetX, y: offsetY } = rocket.spaceOffset;
-            const cameraX = rocket.universe.x || 0;
-            const cameraY = rocket.universe.y || 0;
+            const camera = getCameraPosition();
+            const cameraX = rocket.universe.x || camera.x;
+            const cameraY = rocket.universe.y || camera.y;
             ctx.fillStyle = '#020617';
             ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
@@ -1588,8 +1602,8 @@
                 debris.position.y += debris.velocity.y;
                 debris.velocity.y += 0.012;
                 debris.rotation += debris.spin;
-                return debris.position.x > -80 && debris.position.x < canvasWidth + 80 &&
-                    debris.position.y > -80 && debris.position.y < canvasHeight + 80;
+                return debris.position.x > -80 && debris.position.x < WORLD_WIDTH + 80 &&
+                    debris.position.y > -80 && debris.position.y < WORLD_HEIGHT + 80;
             });
         }
 
@@ -1597,9 +1611,10 @@
             rocket.debris.forEach(debris => {
                 const partDef = PARTS[debris.type];
                 if (partDef && partDef.render) {
+                    const screen = worldToScreen(debris.position.x, debris.position.y);
                     ctx.save();
                     ctx.globalAlpha = 0.9;
-                    partDef.render(debris.position.x, debris.position.y, debris.rotation);
+                    partDef.render(screen.x, screen.y, debris.rotation);
                     ctx.restore();
                 }
             });
@@ -1679,11 +1694,11 @@
                 stageBtn.disabled = rocket.stageCount < 2;
                 modeLabel.textContent = 'FLIGHT MODE';
                 buildStatus.textContent = 'Flight active. Use W/S to thrust and reverse, A/D to rotate.';
-                rocket.position = { x: canvasWidth / 2, y: canvasHeight - 220 };
+                rocket.position = { x: WORLD_WIDTH * 0.5, y: WORLD_HEIGHT * 0.7 };
                 rocket.velocity = { x: 0, y: 0 };
                 rocket.rotation = 0;
                 rocket.angularVelocity = 0;
-                rocket.universe = { x: 0, y: 0 };
+                rocket.universe = { x: rocket.position.x, y: rocket.position.y };
                 rocket.spaceOffset = { x: 0, y: 0 };
                 rocket.hasMoved = false;
                 buildStatus.textContent = 'Flight active. Use W/S to thrust and reverse, A/D to rotate.';
@@ -1800,24 +1815,24 @@
                 rocket.velocity.y *= speedScale;
             }
 
-            // Update position
+            // Update position across a much larger flight world
             rocket.position.x += rocket.velocity.x * frameScale;
             rocket.position.y += rocket.velocity.y * frameScale;
-            rocket.universe.x += rocket.velocity.x * 28 * frameScale;
-            rocket.universe.y += rocket.velocity.y * 28 * frameScale;
+            rocket.universe.x = rocket.position.x;
+            rocket.universe.y = rocket.position.y;
 
             if (rocket.position.x < FLIGHT_MARGIN) {
                 rocket.position.x = FLIGHT_MARGIN;
                 if (rocket.velocity.x < 0) rocket.velocity.x = 0;
-            } else if (rocket.position.x > canvasWidth - FLIGHT_MARGIN) {
-                rocket.position.x = canvasWidth - FLIGHT_MARGIN;
+            } else if (rocket.position.x > WORLD_WIDTH - FLIGHT_MARGIN) {
+                rocket.position.x = WORLD_WIDTH - FLIGHT_MARGIN;
                 if (rocket.velocity.x > 0) rocket.velocity.x = 0;
             }
             if (rocket.position.y < FLIGHT_MARGIN) {
                 rocket.position.y = FLIGHT_MARGIN;
                 if (rocket.velocity.y < 0) rocket.velocity.y = 0;
-            } else if (rocket.position.y > canvasHeight - FLIGHT_MARGIN) {
-                rocket.position.y = canvasHeight - FLIGHT_MARGIN;
+            } else if (rocket.position.y > WORLD_HEIGHT - FLIGHT_MARGIN) {
+                rocket.position.y = WORLD_HEIGHT - FLIGHT_MARGIN;
                 if (rocket.velocity.y > 0) rocket.velocity.y = 0;
             }
 
@@ -1827,9 +1842,11 @@
             rocket.spaceOffset.y -= rocket.velocity.y * 2.4;
             drawSpaceBackground();
 
+            const screenPosition = worldToScreen(rocket.position.x, rocket.position.y);
+
             // Draw rocket
             ctx.save();
-            ctx.translate(rocket.position.x, rocket.position.y);
+            ctx.translate(screenPosition.x, screenPosition.y);
             ctx.rotate(rocket.rotation);
             
             rocket.flightParts.forEach(part => {
@@ -1854,8 +1871,8 @@
             drawDebris();
 
             // Update flight data
-            const altitude = Math.max(0, (canvasHeight - rocket.position.y) * 0.1);
-            
+            const altitude = Math.max(0, (WORLD_HEIGHT - rocket.position.y) * 0.1);
+
             const velocity = Math.hypot(rocket.velocity.x, rocket.velocity.y) * 100;
 
             document.getElementById('stat-altitude').textContent = Math.max(0, altitude.toFixed(1));
