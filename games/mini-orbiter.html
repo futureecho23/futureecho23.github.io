@@ -1025,7 +1025,71 @@
             dockingPort: createBasicPart('Docking Port', 150, '#94a3b8', 'circle'),
             hitchhiker: createBasicPart('Crew Module', 1200, '#f59e0b', 'module'),
             rcs: createBasicPart('RCS', 200, '#38bdf8', 'nozzle'),
-            decoupler: createBasicPart('Decoupler', 120, '#f97316', 'ring'),
+            decoupler: {
+                name: 'Decoupler',
+                mass: 120,
+                width: 40,
+                height: 42,
+                color: '#f97316',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#cbd5e1', '#475569', '#94a3b8', '#1e293b');
+                    ctx.beginPath();
+                    ctx.moveTo(-19, -22); ctx.lineTo(-10, -22);
+                    ctx.lineTo(-7, -4); ctx.lineTo(-15, -4); ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -22); ctx.lineTo(-3, -22);
+                    ctx.lineTo(-2, -4); ctx.lineTo(-7, -4); ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(10, -22); ctx.lineTo(19, -22);
+                    ctx.lineTo(15, -4); ctx.lineTo(7, -4); ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(3, -22); ctx.lineTo(10, -22);
+                    ctx.lineTo(7, -4); ctx.lineTo(2, -4); ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#f97316';
+                    ctx.fillRect(-20, -4, 40, 8);
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.strokeRect(-20, -4, 40, 8);
+                    drawBolt(-15, 0, 1);
+                    drawBolt(15, 0, 1);
+                    ctx.restore();
+                }
+            },
+            slaPanel: {
+                name: 'SLA Panel',
+                mass: 0,
+                width: 14,
+                height: 28,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#e2e8f0', '#334155', '#94a3b8', '#1e293b');
+                    ctx.beginPath();
+                    ctx.moveTo(-7, -14); ctx.lineTo(7, -14);
+                    ctx.lineTo(5, 14); ctx.lineTo(-5, 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.stroke();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -11); ctx.lineTo(0, 11);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
             strut: createBasicPart('Strut', 40, '#64748b', 'bar'),
             noseCone: createBasicPart('Nose Cone', 180, '#e2e8f0', 'cone'),
             adapter: createBasicPart('Adapter', 240, '#a78bfa', 'adapter'),
@@ -1624,50 +1688,46 @@
             if (!thrusting && !reversing) return;
             const activeEngines = rocket.flightParts
                 .filter(part => part.stage === rocket.activeStage && (PARTS[part.type]?.thrust || 0) > 0)
-                .sort((left, right) => right.y - left.y);
-            const engine = activeEngines[0];
-            if (!engine) return;
+            activeEngines.forEach(engine => {
+                const engineDef = PARTS[engine.type];
+                const nozzleX = engine.x - rocket.cog.x;
+                const nozzleY = engine.y - rocket.cog.y + (engineDef.height || 20) / 2;
+                const flameLength = 78;
+                const flameWidth = Math.max(8, Math.min(22, (engineDef.width || 14) * 0.9));
 
-            const engineDef = PARTS[engine.type];
-            const activeStageParts = rocket.flightParts.filter(part => part.stage === rocket.activeStage);
-            const stageCenterX = activeStageParts.reduce((sum, part) => sum + part.x, 0) / activeStageParts.length;
-            const stageCenterY = activeStageParts.reduce((sum, part) => sum + part.y, 0) / activeStageParts.length;
-            const nozzleY = stageCenterY + (engineDef.height || 20) / 2;
-            const flameLength = 78;
-            const flameWidth = Math.max(8, Math.min(22, (engineDef.width || 14) * 0.9));
+                const outerFlame = ctx.createLinearGradient(nozzleX, nozzleY, nozzleX, nozzleY + flameLength);
+                outerFlame.addColorStop(0, reversing ? '#fff7ed' : '#fff1a8');
+                outerFlame.addColorStop(0.18, '#fb923c');
+                outerFlame.addColorStop(0.58, '#ef4444');
+                outerFlame.addColorStop(1, 'rgba(127, 29, 29, 0)');
+                ctx.fillStyle = outerFlame;
+                ctx.beginPath();
+                ctx.moveTo(nozzleX - flameWidth / 2, nozzleY);
+                ctx.quadraticCurveTo(nozzleX - flameWidth * 0.72, nozzleY + flameLength * 0.45, nozzleX - 2, nozzleY + flameLength);
+                ctx.quadraticCurveTo(nozzleX + flameWidth * 0.72, nozzleY + flameLength * 0.45, nozzleX + flameWidth / 2, nozzleY);
+                ctx.closePath();
+                ctx.fill();
 
-            const outerFlame = ctx.createLinearGradient(stageCenterX, nozzleY, stageCenterX, nozzleY + flameLength);
-            outerFlame.addColorStop(0, reversing ? '#fff7ed' : '#fff1a8');
-            outerFlame.addColorStop(0.18, '#fb923c');
-            outerFlame.addColorStop(0.58, '#ef4444');
-            outerFlame.addColorStop(1, 'rgba(127, 29, 29, 0)');
-            ctx.fillStyle = outerFlame;
-            ctx.beginPath();
-            ctx.moveTo(stageCenterX - flameWidth / 2, nozzleY);
-            ctx.quadraticCurveTo(stageCenterX - flameWidth * 0.72, nozzleY + flameLength * 0.45, stageCenterX - 2, nozzleY + flameLength);
-            ctx.quadraticCurveTo(stageCenterX + flameWidth * 0.72, nozzleY + flameLength * 0.45, stageCenterX + flameWidth / 2, nozzleY);
-            ctx.closePath();
-            ctx.fill();
+                const coreLength = flameLength * 0.62;
+                const core = ctx.createLinearGradient(nozzleX, nozzleY, nozzleX, nozzleY + coreLength);
+                core.addColorStop(0, '#ffffff');
+                core.addColorStop(0.28, '#fef3c7');
+                core.addColorStop(0.75, '#fbbf24');
+                core.addColorStop(1, 'rgba(249, 115, 22, 0)');
+                ctx.fillStyle = core;
+                ctx.beginPath();
+                ctx.moveTo(nozzleX - flameWidth * 0.22, nozzleY);
+                ctx.quadraticCurveTo(nozzleX - flameWidth * 0.3, nozzleY + coreLength * 0.45, nozzleX, nozzleY + coreLength);
+                ctx.quadraticCurveTo(nozzleX + flameWidth * 0.3, nozzleY + coreLength * 0.45, nozzleX + flameWidth * 0.22, nozzleY);
+                ctx.closePath();
+                ctx.fill();
 
-            const coreLength = flameLength * 0.62;
-            const core = ctx.createLinearGradient(stageCenterX, nozzleY, stageCenterX, nozzleY + coreLength);
-            core.addColorStop(0, '#ffffff');
-            core.addColorStop(0.28, '#fef3c7');
-            core.addColorStop(0.75, '#fbbf24');
-            core.addColorStop(1, 'rgba(249, 115, 22, 0)');
-            ctx.fillStyle = core;
-            ctx.beginPath();
-            ctx.moveTo(stageCenterX - flameWidth * 0.22, nozzleY);
-            ctx.quadraticCurveTo(stageCenterX - flameWidth * 0.3, nozzleY + coreLength * 0.45, stageCenterX, nozzleY + coreLength);
-            ctx.quadraticCurveTo(stageCenterX + flameWidth * 0.3, nozzleY + coreLength * 0.45, stageCenterX + flameWidth * 0.22, nozzleY);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.fillStyle = 'rgba(254, 215, 170, 0.38)';
-            ctx.beginPath();
-            ctx.arc(stageCenterX - flameWidth * 0.7, nozzleY + flameLength * 0.46, 3, 0, Math.PI * 2);
-            ctx.arc(stageCenterX + flameWidth * 0.72, nozzleY + flameLength * 0.62, 2.5, 0, Math.PI * 2);
-            ctx.fill();
+                ctx.fillStyle = 'rgba(254, 215, 170, 0.38)';
+                ctx.beginPath();
+                ctx.arc(nozzleX - flameWidth * 0.7, nozzleY + flameLength * 0.46, 3, 0, Math.PI * 2);
+                ctx.arc(nozzleX + flameWidth * 0.72, nozzleY + flameLength * 0.62, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
         }
 
         // Launch button
@@ -1716,6 +1776,32 @@
             const cosRotation = Math.cos(rocket.rotation);
             const sinRotation = Math.sin(rocket.rotation);
             const separatingParts = rocket.flightParts.filter(part => part.stage === spentStage);
+            separatingParts.filter(part => part.type === 'decoupler').forEach(decoupler => {
+                const panelOffsets = [
+                    { x: -12, y: -12 }, { x: -12, y: 4 },
+                    { x: 12, y: -12 }, { x: 12, y: 4 }
+                ];
+                panelOffsets.forEach(offset => {
+                    const localX = decoupler.x - rocket.cog.x + offset.x;
+                    const localY = decoupler.y - rocket.cog.y + offset.y;
+                    const outward = Math.sign(offset.x);
+                    rocket.debris.push({
+                        type: 'slaPanel',
+                        stage: spentStage,
+                        position: {
+                            x: rocket.position.x + localX * cosRotation - localY * sinRotation,
+                            y: rocket.position.y + localX * sinRotation + localY * cosRotation
+                        },
+                        velocity: {
+                            x: rocket.velocity.x + outward * cosRotation * 0.7,
+                            y: rocket.velocity.y + outward * sinRotation * 0.7 - 0.08
+                        },
+                        rotation: rocket.rotation,
+                        spin: outward * 0.035,
+                        separationId
+                    });
+                });
+            });
             separatingParts.forEach((part, index) => {
                 const relativeX = part.x - rocket.cog.x;
                 const relativeY = part.y - rocket.cog.y;
