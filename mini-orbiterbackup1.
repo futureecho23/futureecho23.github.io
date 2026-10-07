@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Orbiter — Future Echo Games</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 18% 12%, rgba(56, 189, 248, 0.18), transparent 18%),
+                        radial-gradient(circle at 82% 16%, rgba(168, 85, 247, 0.10), transparent 18%),
+                        linear-gradient(180deg, #020617 0%, #020617 40%, #0f172a 100%);
+            color: #e2e8f0;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+            background-size: 100% 34px, 34px 100%;
+            opacity: 0.35;
+            mix-blend-mode: overlay;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(56, 189, 248, 0.12);
+            box-shadow: 0 40px 100px -50px rgba(56, 189, 248, 0.45);
+            backdrop-filter: blur(18px);
+        }
+
+        .part-button {
+            transition: all 0.2s ease;
+            border-color: rgba(100, 116, 139, 0.7);
+            background: rgba(15, 23, 42, 0.65);
+            color: #e2e8f0;
+        }
+
+        .part-button:hover {
+            background: rgba(56, 189, 248, 0.12);
+            border-color: rgba(56, 189, 248, 0.45);
+        }
+
+        .part-button.selected {
+            border-color: #22d3ee;
+            background: rgba(14, 165, 233, 0.18);
+            box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.28);
+        }
+
+        .part-button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .action-button {
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .action-button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .action-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.82);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .canvas-shell {
+            min-height: 900px;
+            border-radius: 1.5rem;
+            border: 1px solid rgba(56, 189, 248, 0.12);
+            overflow: hidden;
+            background: rgba(15, 23, 42, 0.6);
+            box-shadow: 0 30px 70px -40px rgba(56, 189, 248, 0.3);
+        }
+
+        canvas {
+            width: 100%;
+            display: block;
+            background: #020617;
+            background-image: radial-gradient(rgba(255,255,255,0.18), transparent 2px), radial-gradient(rgba(255,255,255,0.1), transparent 1px);
+            background-size: 110px 110px, 55px 55px;
+            background-position: 0 0, 28px 28px;
+            cursor: crosshair;
+        }
+
+        @media (max-width: 1023px) {
+            body {
+                overflow: auto;
+            }
+
+            .canvas-shell {
+                min-height: 900px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 antialiased relative overflow-auto">
+    <header class="container mx-auto px-4 pt-5 flex items-center justify-between gap-4">
+        <a class="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 hover:text-cyan-200 transition" href="/index.html">← Arcade</a>
+        <div class="text-right">
+            <p class="text-[0.68rem] uppercase tracking-[0.3em] text-cyan-300">Launch complex</p>
+            <h1 class="text-lg sm:text-xl font-bold text-white">Mini Orbiter</h1>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-5 lg:py-6">
+        <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-sm text-slate-400">Place hardware freely, stage it cleanly, and push for altitude.</p>
+            </div>
+            <div id="build-status" class="text-sm text-cyan-200" aria-live="polite">Select a part, then click the build area.</div>
+        </div>
+    <div class="glass-panel rounded-[2rem] border border-cyan-500/10 p-4 sm:p-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Build Area -->
+            <div class="lg:w-1/4 space-y-4">
+                <div class="bg-slate-900/85 rounded-3xl p-5 border border-slate-700/40 shadow-xl shadow-cyan-500/5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-cyan-100">Parts</h2>
+                        <span id="part-count" class="text-xs uppercase tracking-[0.2em] text-slate-500">0 parts</span>
+                    </div>
+                    <div class="space-y-4">
+                    <!-- Command & Control -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Command & Control</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="command">
+                                🛸<br>Command Pod
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="probe">
+                                📡<br>Probe Core
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="dockingPort">
+                                🔌<br>Docking Port
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="hitchhiker">
+                                🏠<br>Crew Module
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Fuel & Propulsion -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Fuel & Propulsion</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fuelSmall">
+                                🔋<br>Small Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fuelLarge">
+                                ⛽<br>Large Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="engineSmall">
+                                🛸<br>Small Engine
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="engineLarge">
+                                🚀<br>Large Engine
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="xenonTank">
+                                💠<br>Xenon Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="ionEngine">
+                                ⚡<br>Ion Engine
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Interstellar Travel -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Interstellar Travel</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="pulseDrive">
+                                ☢️<br>Nuclear Pulse Drive
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="fusionCore">
+                                ☄️<br>Fusion Core
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="coldSleep">
+                                🛏️<br>Cold Sleep Pod
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="starMap">
+                                🧭<br>Star Map
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="shieldedHull">
+                                🛡️<br>Shielded Hull
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="deepScanner">
+                                🔭<br>Deep Scanner
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="nuclearPellet">
+                                ⚛️<br>Nuclear Pellet
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="centrifuge">
+                                🌀<br>Centrifuge
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Utility & Structure -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Utility & Structure</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="rcs">
+                                💨<br>RCS
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="decoupler">
+                                ⚡<br>Decoupler
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="strut">
+                                📎<br>Strut
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="noseCone">
+                                🔺<br>Nose Cone
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="adapter">
+                                ⬡<br>Adapter
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="radiator">
+                                ❄️<br>Radiator
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Landing & Recovery -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Landing & Recovery</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="legs">
+                                🦿<br>Landing Legs
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="chute">
+                                🪂<br>Parachute
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="heatshield">
+                                🛡️<br>Heat Shield
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="airbrake">
+                                🎭<br>Airbrake
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Science & Power -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-400 mb-2">Science & Power</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="solar">
+                                ☀️<br>Solar Panel
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="science">
+                                🔬<br>Science Lab
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="antenna">
+                                📡<br>Antenna
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="rtg">
+                                ⚛️<br>RTG
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="goo">
+                                🧪<br>Goo Tank
+                            </button>
+                            <button class="part-button p-2 border border-slate-600 rounded hover:bg-slate-700 text-center" data-part="sensor">
+                                📊<br>Sensors
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <div class="stat-card rounded-3xl p-5">
+                    <h2 class="text-xl font-bold mb-4 text-cyan-100">Stats</h2>
+                    <div class="space-y-2 text-sm text-slate-300">
+                        <div>Mass: <span id="stat-mass">0</span> kg</div>
+                        <div>Thrust: <span id="stat-thrust">0</span> kN</div>
+                        <div>Delta-v: <span id="stat-deltav">0</span> m/s</div>
+                        <div>Fuel: <span id="stat-fuel">0</span>%</div>
+                        <div>Pulse fuel: <span id="stat-pulse-fuel">0</span>%</div>
+                        <div>Stage: <span id="stat-stage">1</span></div>
+                    </div>
+                </div>
+
+                <div class="stat-card rounded-3xl p-5">
+                    <h2 class="text-xl font-bold mb-4 text-cyan-100">Flight Data</h2>
+                    <div class="space-y-2 text-sm text-slate-300">
+                        <div>Altitude: <span id="stat-altitude">0</span> km</div>
+                        <div>Velocity: <span id="stat-velocity">0</span> m/s</div>
+                        <div>Phase: <span id="stat-phase">PAD</span></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="undo-btn" class="action-button border border-slate-600 bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl" disabled>Undo</button>
+                    <button id="reset-btn" class="action-button border border-slate-600 bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl">Reset</button>
+                </div>
+                <button id="launch-btn" class="action-button w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-500/20">
+                    Launch vehicle
+                </button>
+                <button id="stage-btn" class="action-button w-full border border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-200 font-semibold py-3 px-4 rounded-xl" disabled>
+                    Separate stage
+                </button>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="lg:flex-1">
+                <div class="canvas-shell relative">
+                    <canvas id="gameCanvas"></canvas>
+                    <div class="pointer-events-none absolute left-4 top-4 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
+                        <span id="mode-label">BUILD MODE</span>
+                    </div>
+                </div>
+                <div id="flight-controls" class="mt-4 grid grid-cols-3 gap-3 sm:max-w-md sm:mx-auto" aria-label="Flight controls">
+                    <button type="button" class="flight-control action-button rounded-xl border border-slate-600 bg-slate-800/80 py-3 text-lg text-slate-200" data-control="left" aria-label="Rotate left">↶</button>
+                    <button type="button" class="flight-control action-button rounded-xl border border-cyan-400/50 bg-cyan-500/90 py-3 text-lg font-bold text-slate-950" data-control="thrust" aria-label="Thrust">↑</button>
+                    <button type="button" class="flight-control action-button rounded-xl border border-slate-600 bg-slate-800/80 py-3 text-lg text-slate-200" data-control="right" aria-label="Rotate right">↷</button>
+                </div>
+                <p class="mt-3 text-center text-xs text-slate-500">WASD: W throttle, S brake, A/D steer. Space: stage.</p>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const launchBtn = document.getElementById('launch-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const stageBtn = document.getElementById('stage-btn');
+        const buildStatus = document.getElementById('build-status');
+        const partCount = document.getElementById('part-count');
+        const modeLabel = document.getElementById('mode-label');
+        const flightControls = document.querySelectorAll('.flight-control');
+
+        // Set canvas size with good resolution
+        let canvasWidth = 0;
+        let canvasHeight = 0;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const displayWidth = container.clientWidth;
+            const displayHeight = Math.max(900, Math.min(window.innerHeight - 100, displayWidth * 1.35));
+            const ratio = window.devicePixelRatio || 1;
+
+            canvasWidth = displayWidth;
+            canvasHeight = displayHeight;
+            canvas.width = Math.floor(displayWidth * ratio);
+            canvas.height = Math.floor(displayHeight * ratio);
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+
+            // Reset transform so scaling does not accumulate
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            drawBuildMode();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game state
+        let gameState = 'building'; // 'building' or 'flying'
+        let selectedPart = null;
+        let cursorPosition = null;
+        let rocket = {
+            parts: [],
+            position: { x: 0, y: 0 },
+            velocity: { x: 0, y: 0 },
+            rotation: 0,
+            angularVelocity: 0,
+            thrust: 0,
+            mass: 0,
+            fuel: 0,
+            maxFuel: 0,
+            pulseFuel: 0,
+            maxPulseFuel: 0,
+            activeStage: 1,
+            stageCount: 1,
+            cog: { x: 0, y: 0 },
+            thrustCenter: { x: 0, y: 0 },
+            universe: { x: 0, y: 0 },
+            flightParts: [],
+            debris: [],
+            spaceOffset: { x: 0, y: 0 },
+            hasMoved: false
+        };
+
+        function metalGradient(top, bottom, left = '#f8fafc', right = '#64748b') {
+            const gradient = ctx.createLinearGradient(0, -40, 0, 40);
+            gradient.addColorStop(0, top);
+            gradient.addColorStop(0.48, left);
+            gradient.addColorStop(1, bottom);
+            return gradient;
+        }
+
+        function drawBand(y, width, color = '#475569') {
+            ctx.fillStyle = color;
+            ctx.fillRect(-width / 2, y - 2, width, 4);
+            ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+            ctx.strokeRect(-width / 2, y - 2, width, 4);
+        }
+
+        function drawBolt(x, y, radius = 1.5) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawTankBody(width, height, accent = '#38bdf8') {
+            ctx.fillStyle = metalGradient('#f8fafc', '#64748b', '#dbeafe', '#475569');
+            ctx.fillRect(-width / 2, -height / 2, width, height);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(-width / 2, -height / 2, width, height);
+            drawBand(-height / 2 + 8, width, accent);
+            drawBand(height / 2 - 8, width, '#334155');
+            drawBolt(-width / 2 + 4, -height / 2 + 4);
+            drawBolt(width / 2 - 4, -height / 2 + 4);
+        }
+
+        // Part definitions
+        const PARTS = {
+            // Command & Control
+            command: {
+                name: 'Command Pod',
+                mass: 1000,
+                width: 20,
+                height: 30,
+                color: '#C0C0C0',
+                crew: 3,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#ffffff', '#64748b', '#e2e8f0', '#475569');
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 8);
+                    ctx.lineTo(-9, -7);
+                    ctx.quadraticCurveTo(-7, -16, 0, -18);
+                    ctx.quadraticCurveTo(7, -16, 9, -7);
+                    ctx.lineTo(10, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.stroke();
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.roundRect(-7, -7, 14, 7, 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#67e8f9';
+                    ctx.stroke();
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(-12, 7, 24, 5);
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.strokeRect(-12, 7, 24, 5);
+                    drawBolt(-8, 9);
+                    drawBolt(8, 9);
+                    ctx.restore();
+                }
+            },
+            probe: {
+                name: 'Probe Core',
+                mass: 400,
+                width: 16,
+                height: 16,
+                color: '#9CA3AF',
+                electricityUse: 0.2,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#e2e8f0', '#334155');
+                    ctx.fillRect(-8, -8, 16, 16);
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.strokeRect(-8, -8, 16, 16);
+                    ctx.fillStyle = '#22d3ee';
+                    ctx.fillRect(-5, -5, 4, 4);
+                    ctx.fillStyle = '#facc15';
+                    ctx.fillRect(2, -5, 3, 3);
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -8);
+                    ctx.lineTo(0, -18);
+                    ctx.moveTo(-5, -15);
+                    ctx.lineTo(5, -15);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            
+            // Fuel & Propulsion
+            fuelSmall: {
+                name: 'Small Fuel Tank',
+                mass: 1000,
+                width: 16,
+                height: 30,
+                color: '#E5E7EB',
+                fuel: 500,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    drawTankBody(16, 30, '#38bdf8');
+                    ctx.restore();
+                }
+            },
+            fuelLarge: {
+                name: 'Large Fuel Tank',
+                mass: 3000,
+                width: 24,
+                height: 50,
+                color: '#E5E7EB',
+                fuel: 2000,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    drawTankBody(24, 50, '#f59e0b');
+                    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    ctx.fillRect(-5, -16, 3, 32);
+                    ctx.restore();
+                }
+            },
+            engineSmall: {
+                name: 'Small Engine',
+                mass: 800,
+                thrust: 15000,
+                width: 16,
+                height: 24,
+                color: '#4B5563',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#334155';
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -12); ctx.lineTo(8, -12);
+                    ctx.lineTo(10, 8); ctx.lineTo(6, 12);
+                    ctx.lineTo(-6, 12); ctx.lineTo(-10, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.stroke();
+                    ctx.fillStyle = '#0b1120';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 11, 7, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    drawBand(-7, 14, '#64748b');
+                    ctx.restore();
+                }
+            },
+            engineLarge: {
+                name: 'Large Engine',
+                mass: 2000,
+                thrust: 45000,
+                width: 24,
+                height: 36,
+                color: '#4B5563',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.beginPath();
+                    ctx.moveTo(-12, -18);
+                    ctx.lineTo(12, -18);
+                    ctx.lineTo(15, 12);
+                    ctx.lineTo(9, 18);
+                    ctx.lineTo(-9, 18);
+                    ctx.lineTo(-15, 12);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#020617';
+                    ctx.stroke();
+                    ctx.fillStyle = '#0b1120';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 16, 10, 5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    drawBand(-12, 22, '#64748b');
+                    ctx.restore();
+                }
+            },
+            pulseDrive: {
+                name: 'Nuclear Pulse Drive',
+                mass: 4200,
+                thrust: 60000,
+                width: 28,
+                height: 40,
+                color: '#a3e635',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#111827';
+                    ctx.beginPath();
+                    ctx.moveTo(-13, -20);
+                    ctx.lineTo(13, -20);
+                    ctx.lineTo(18, 8);
+                    ctx.lineTo(10, 18);
+                    ctx.lineTo(-10, 18);
+                    ctx.lineTo(-18, 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#d9f99d';
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#14532d';
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -15);
+                    ctx.lineTo(8, -15);
+                    ctx.lineTo(13, 10);
+                    ctx.lineTo(-13, 10);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#86efac';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-11, 0); ctx.lineTo(11, 0);
+                    ctx.moveTo(0, -11); ctx.lineTo(0, 11);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 18, 8, 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(250,204,21,0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 18, 15, 7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    drawBand(-12, 20, '#4ade80');
+                    ctx.restore();
+                }
+            },
+            fusionCore: {
+                name: 'Fusion Core',
+                mass: 2800,
+                width: 22,
+                height: 26,
+                color: '#22c55e',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#ecfccb', '#14532d', '#bbf7d0', '#166534');
+                    ctx.beginPath();
+                    ctx.roundRect(-11, -13, 22, 26, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#052e16';
+                    ctx.stroke();
+                    ctx.strokeStyle = '#86efac';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 0); ctx.lineTo(10, 0);
+                    ctx.moveTo(0, -10); ctx.lineTo(0, 10);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            coldSleep: {
+                name: 'Cold Sleep Pod',
+                mass: 1100,
+                width: 18,
+                height: 24,
+                color: '#a78bfa',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#f5f3ff', '#4338ca', '#ddd6fe', '#312e81');
+                    ctx.beginPath();
+                    ctx.roundRect(-9, -12, 18, 24, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#1f2937';
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+                    ctx.fillRect(-6, -6, 12, 10);
+                    ctx.restore();
+                }
+            },
+            starMap: {
+                name: 'Star Map',
+                mass: 700,
+                width: 16,
+                height: 18,
+                color: '#38bdf8',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(-8, -9, 16, 18);
+                    ctx.strokeStyle = '#7dd3fc';
+                    ctx.strokeRect(-8, -9, 16, 18);
+                    for (let i = 0; i < 8; i++) {
+                        const px = -5 + (i % 3) * 4;
+                        const py = -6 + Math.floor(i / 3) * 6;
+                        ctx.beginPath();
+                        ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+                        ctx.fillStyle = '#e0f2fe';
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            },
+            shieldedHull: {
+                name: 'Shielded Hull',
+                mass: 1900,
+                width: 18,
+                height: 24,
+                color: '#60a5fa',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#dbeafe', '#1e3a8a', '#93c5fd', '#0f172a');
+                    ctx.fillRect(-9, -12, 18, 24);
+                    ctx.strokeStyle = '#dbeafe';
+                    ctx.strokeRect(-9, -12, 18, 24);
+                    ctx.fillStyle = 'rgba(125,211,252,0.32)';
+                    ctx.fillRect(-5, -8, 10, 16);
+                    ctx.restore();
+                }
+            },
+            deepScanner: {
+                name: 'Deep Scanner',
+                mass: 950,
+                width: 16,
+                height: 20,
+                color: '#f59e0b',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#1f2937';
+                    ctx.beginPath();
+                    ctx.roundRect(-8, -10, 16, 20, 4);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.stroke();
+                    ctx.fillStyle = '#fef3c7';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            nuclearPellet: {
+                name: 'Nuclear Pellet',
+                mass: 900,
+                width: 18,
+                height: 22,
+                color: '#bef264',
+                pulseFuel: 100,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#ecfccb', '#365314', '#bef264', '#1a2e05');
+                    ctx.beginPath();
+                    ctx.roundRect(-9, -11, 18, 22, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#d9f99d';
+                    ctx.stroke();
+                    ctx.fillStyle = '#facc15';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#3f6212';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(-8, -5); ctx.lineTo(8, -5);
+                    ctx.moveTo(-8, 5); ctx.lineTo(8, 5);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            centrifuge: {
+                name: 'Centrifuge',
+                mass: 2600,
+                width: 28,
+                height: 28,
+                color: '#f472b6',
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#111827';
+                    ctx.beginPath();
+                    ctx.roundRect(-14, -14, 28, 28, 7);
+                    ctx.fill();
+                    ctx.strokeStyle = '#f9a8d4';
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#e0f2fe';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-12, 0); ctx.lineTo(12, 0);
+                    ctx.moveTo(0, -12); ctx.lineTo(0, 12);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#c084fc';
+                    ctx.beginPath();
+                    ctx.moveTo(-2, -18); ctx.lineTo(2, -18);
+                    ctx.moveTo(-2, 18); ctx.lineTo(2, 18);
+                    ctx.moveTo(-18, -2); ctx.lineTo(-18, 2);
+                    ctx.moveTo(18, -2); ctx.lineTo(18, 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            ionEngine: {
+                name: 'Ion Engine',
+                mass: 250,
+                thrust: 2000,
+                width: 14,
+                height: 16,
+                color: '#60A5FA',
+                electricityUse: 1.5,
+                xenonUse: 0.1,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = '#334155';
+                    ctx.beginPath();
+                    ctx.roundRect(-7, -9, 14, 18, 3);
+                    ctx.fill();
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.stroke();
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(0, 7, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#67e8f9';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            },
+            xenonTank: {
+                name: 'Xenon Tank',
+                mass: 400,
+                width: 16,
+                height: 24,
+                color: '#818CF8',
+                xenon: 100,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#c4b5fd', '#312e81', '#818cf8', '#1e1b4b');
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 8, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#1e1b4b';
+                    ctx.stroke();
+                    ctx.strokeStyle = '#c4b5fd';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 6, 10, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    drawBand(0, 14, '#4f46e5');
+                    ctx.restore();
+                }
+            },
+
+            // Additional parts for other categories...
+        };
+
+        function createBasicPart(name, mass, color, shape = 'box') {
+            return {
+                name,
+                mass,
+                width: 18,
+                height: 18,
+                color,
+                render: (x, y, rotation) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(rotation);
+                    ctx.fillStyle = metalGradient('#f8fafc', '#475569', color, '#1e293b');
+                    if (shape === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                        ctx.fillStyle = '#0b1120';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                        drawBolt(-5, -5, 1);
+                        drawBolt(5, 5, 1);
+                    } else if (shape === 'module') {
+                        ctx.roundRect(-10, -12, 20, 24, 4);
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillRect(-6, -6, 12, 5);
+                        drawBand(7, 20, color);
+                    } else if (shape === 'nozzle') {
+                        ctx.beginPath();
+                        ctx.moveTo(-6, -8); ctx.lineTo(6, -8);
+                        ctx.lineTo(9, 5); ctx.lineTo(5, 10);
+                        ctx.lineTo(-5, 10); ctx.lineTo(-9, 5);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                        ctx.fillStyle = '#0b1120';
+                        ctx.beginPath();
+                        ctx.ellipse(0, 9, 6, 3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (shape === 'ring') {
+                        ctx.fillRect(-12, -5, 24, 10);
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.strokeRect(-12, -5, 24, 10);
+                        drawBand(0, 18, color);
+                    } else if (shape === 'bar') {
+                        ctx.fillRect(-12, -3, 24, 6);
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.strokeRect(-12, -3, 24, 6);
+                        drawBolt(-8, 0, 1);
+                        drawBolt(8, 0, 1);
+                    } else if (shape === 'cone') {
+                        ctx.beginPath();
+                        ctx.moveTo(0, -13); ctx.lineTo(11, 9);
+                        ctx.lineTo(-11, 9); ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                        drawBand(7, 17, color);
+                    } else if (shape === 'adapter') {
+                        ctx.beginPath();
+                        ctx.moveTo(-6, -11); ctx.lineTo(6, -11);
+                        ctx.lineTo(11, 10); ctx.lineTo(-11, 10);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                    } else if (shape === 'panel') {
+                        ctx.fillStyle = '#172554';
+                        ctx.fillRect(-14, -8, 28, 16);
+                        ctx.strokeStyle = '#38bdf8';
+                        ctx.strokeRect(-14, -8, 28, 16);
+                        ctx.beginPath();
+                        ctx.moveTo(0, -8); ctx.lineTo(0, 8);
+                        ctx.moveTo(-14, 0); ctx.lineTo(14, 0);
+                        ctx.stroke();
+                    } else if (shape === 'leg') {
+                        ctx.strokeStyle = '#cbd5e1';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -8); ctx.lineTo(-8, 9); ctx.lineTo(8, 9);
+                        ctx.stroke();
+                        ctx.lineWidth = 1;
+                    } else if (shape === 'canopy') {
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(0, 2, 11, Math.PI, 0);
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                        ctx.strokeStyle = '#fef2f2';
+                        ctx.beginPath();
+                        ctx.moveTo(-8, 2); ctx.lineTo(-4, 12);
+                        ctx.moveTo(8, 2); ctx.lineTo(4, 12);
+                        ctx.stroke();
+                    } else if (shape === 'shield') {
+                        ctx.beginPath();
+                        ctx.moveTo(-11, -7); ctx.lineTo(11, -7);
+                        ctx.lineTo(7, 7); ctx.quadraticCurveTo(0, 13, -7, 7);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                    } else if (shape === 'dish') {
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(0, 3, 10, Math.PI, 0);
+                        ctx.fill();
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(0, 3); ctx.lineTo(0, -12);
+                        ctx.stroke();
+                    } else if (shape === 'finned') {
+                        ctx.fillRect(-7, -10, 14, 20);
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.strokeRect(-7, -10, 14, 20);
+                        ctx.fillStyle = color;
+                        ctx.fillRect(-13, -4, 6, 10);
+                        ctx.fillRect(7, -4, 6, 10);
+                    } else {
+                        ctx.fillRect(-9, -9, 18, 18);
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.strokeRect(-9, -9, 18, 18);
+                        drawBand(0, 18, color);
+                        drawBolt(-6, -6, 1);
+                        drawBolt(6, 6, 1);
+                    }
+                    ctx.restore();
+                }
+            };
+        }
+
+        Object.assign(PARTS, {
+            dockingPort: createBasicPart('Docking Port', 150, '#94a3b8', 'circle'),
+            hitchhiker: createBasicPart('Crew Module', 1200, '#f59e0b', 'module'),
+            rcs: createBasicPart('RCS', 200, '#38bdf8', 'nozzle'),
+            decoupler: createBasicPart('Decoupler', 120, '#f97316', 'ring'),
+            strut: createBasicPart('Strut', 40, '#64748b', 'bar'),
+            noseCone: createBasicPart('Nose Cone', 180, '#e2e8f0', 'cone'),
+            adapter: createBasicPart('Adapter', 240, '#a78bfa', 'adapter'),
+            radiator: createBasicPart('Radiator', 100, '#67e8f9', 'panel'),
+            legs: createBasicPart('Landing Legs', 160, '#94a3b8', 'leg'),
+            chute: createBasicPart('Parachute', 80, '#fb7185', 'canopy'),
+            heatshield: createBasicPart('Heat Shield', 300, '#f97316', 'shield'),
+            airbrake: createBasicPart('Airbrake', 120, '#f43f5e', 'finned'),
+            solar: createBasicPart('Solar Panel', 80, '#38bdf8', 'panel'),
+            science: createBasicPart('Science Lab', 700, '#c084fc', 'module'),
+            antenna: createBasicPart('Antenna', 60, '#facc15', 'dish'),
+            rtg: createBasicPart('RTG', 180, '#fb923c', 'module'),
+            goo: createBasicPart('Goo Tank', 100, '#4ade80', 'circle'),
+            sensor: createBasicPart('Sensors', 70, '#22d3ee', 'finned')
+        });
+
+        resizeCanvas();
+
+        // Handle part selection
+        document.querySelectorAll('.part-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.part-button').forEach(b => b.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedPart = button.dataset.part;
+                buildStatus.textContent = `${PARTS[selectedPart].name} selected. Move over the build area, then click to place it.`;
+                drawBuildMode();
+            });
+        });
+
+        function getCanvasPosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('pointermove', (event) => {
+            if (gameState !== 'building') return;
+            cursorPosition = getCanvasPosition(event);
+            drawBuildMode();
+        });
+
+        canvas.addEventListener('pointerleave', () => {
+            cursorPosition = null;
+            drawBuildMode();
+        });
+
+        function switchToDebrisVessel(event) {
+            const { x, y } = getCanvasPosition(event);
+            const target = rocket.debris.find(debris => {
+                const partDef = PARTS[debris.type] || {};
+                const hitRadius = Math.max(18, Math.max(partDef.width || 18, partDef.height || 18) / 2 + 8);
+                return Math.hypot(debris.position.x - x, debris.position.y - y) <= hitRadius;
+            });
+            if (!target || !target.separationId) return false;
+
+            const selectedDebris = rocket.debris.filter(debris => debris.separationId === target.separationId);
+            const center = selectedDebris.reduce((sum, debris) => ({
+                x: sum.x + debris.position.x / selectedDebris.length,
+                y: sum.y + debris.position.y / selectedDebris.length
+            }), { x: 0, y: 0 });
+            const velocity = selectedDebris.reduce((sum, debris) => ({
+                x: sum.x + debris.velocity.x / selectedDebris.length,
+                y: sum.y + debris.velocity.y / selectedDebris.length
+            }), { x: 0, y: 0 });
+            const vesselRotation = target.rotation || 0;
+            const cosRotation = Math.cos(vesselRotation);
+            const sinRotation = Math.sin(vesselRotation);
+
+            const formerVesselId = `active-${Date.now()}`;
+            rocket.flightParts.forEach((part, index) => {
+                const relativeX = part.x - rocket.cog.x;
+                const relativeY = part.y - rocket.cog.y;
+                rocket.debris.push({
+                    ...part,
+                    position: {
+                        x: rocket.position.x + relativeX * Math.cos(rocket.rotation) - relativeY * Math.sin(rocket.rotation),
+                        y: rocket.position.y + relativeX * Math.sin(rocket.rotation) + relativeY * Math.cos(rocket.rotation)
+                    },
+                    velocity: { x: rocket.velocity.x, y: rocket.velocity.y },
+                    rotation: rocket.rotation,
+                    spin: 0,
+                    separationId: formerVesselId
+                });
+            });
+
+            rocket.flightParts = selectedDebris.map(debris => ({
+                ...debris,
+                x: (debris.position.x - center.x) * cosRotation + (debris.position.y - center.y) * sinRotation,
+                y: -(debris.position.x - center.x) * sinRotation + (debris.position.y - center.y) * cosRotation
+            }));
+            rocket.debris = rocket.debris.filter(debris => debris.separationId !== target.separationId);
+            rocket.position = center;
+            rocket.velocity = velocity;
+            rocket.rotation = vesselRotation;
+            rocket.angularVelocity = 0;
+            rocket.activeStage = target.stage || rocket.activeStage;
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.mass = balance.mass;
+            rocket.thrust = balance.thrust;
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            rocket.position.x += balance.cog.x * cosRotation - balance.cog.y * sinRotation;
+            rocket.position.y += balance.cog.x * sinRotation + balance.cog.y * cosRotation;
+            buildStatus.textContent = 'Vessel switched. Flight controls now follow the selected separated stage.';
+            return true;
+        }
+
+        // Handle canvas clicks
+        canvas.addEventListener('click', (e) => {
+            if (gameState === 'flying') {
+                switchToDebrisVessel(e);
+                return;
+            }
+            if (gameState !== 'building' || !selectedPart) return;
+
+            const { x, y } = getCanvasPosition(e);
+            const buildCenter = { x: canvasWidth / 2, y: canvasHeight / 2 };
+            const snappedX = Math.round((x - buildCenter.x) / 20) * 20;
+            const snappedY = Math.round((y - buildCenter.y) / 20) * 20;
+            const stage = rocket.stageCount;
+            rocket.parts.push({
+                type: selectedPart,
+                x: Math.max(-canvasWidth / 2 + 40, Math.min(canvasWidth / 2 - 40, snappedX)),
+                y: Math.max(-canvasHeight / 2 + 40, Math.min(canvasHeight / 2 - 40, snappedY)),
+                stage
+            });
+
+            if (selectedPart === 'decoupler') {
+                rocket.stageCount += 1;
+                buildStatus.textContent = `Decoupler added. New parts will belong to stage ${rocket.stageCount}.`;
+            }
+
+            updateRocketStats();
+            drawBuildMode();
+        });
+
+        function computeMassBalance(parts = rocket.parts) {
+            let mass = 0;
+            let weightedX = 0;
+            let weightedY = 0;
+            let thrust = 0;
+            let thrustWeightedX = 0;
+            let thrustWeightedY = 0;
+            let fuel = 0;
+            let maxFuel = 0;
+            let pulseFuel = 0;
+            let maxPulseFuel = 0;
+
+            parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (!partDef) return;
+
+                const partMass = partDef.mass || 0;
+                mass += partMass;
+                weightedX += part.x * partMass;
+                weightedY += part.y * partMass;
+
+                if (partDef.fuel) {
+                    fuel += partDef.fuel;
+                    maxFuel += partDef.fuel;
+                }
+                if (partDef.pulseFuel) {
+                    pulseFuel += partDef.pulseFuel;
+                    maxPulseFuel += partDef.pulseFuel;
+                }
+
+                if (part.stage === rocket.activeStage && (partDef.thrust || 0) > 0) {
+                    const partThrust = partDef.thrust || 0;
+                    thrust += partThrust;
+                    thrustWeightedX += part.x * partThrust;
+                    thrustWeightedY += part.y * partThrust;
+                }
+            });
+
+            const cog = mass > 0 ? { x: weightedX / mass, y: weightedY / mass } : { x: 0, y: 0 };
+            const thrustCenter = thrust > 0
+                ? { x: thrustWeightedX / thrust, y: thrustWeightedY / thrust }
+                : { x: cog.x, y: cog.y };
+
+            return { mass, cog, thrust, thrustCenter, fuel, maxFuel, pulseFuel, maxPulseFuel };
+        }
+
+        // Update rocket statistics
+        function updateRocketStats(preserveFuel = false) {
+            let stageCount = Math.max(1, rocket.stageCount);
+            const balance = computeMassBalance(rocket.parts);
+
+            rocket.parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef) {
+                    stageCount = Math.max(stageCount, part.stage || 1);
+                }
+            });
+
+            rocket.mass = balance.mass;
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            rocket.thrust = balance.thrust;
+            if (!preserveFuel) rocket.fuel = balance.fuel;
+            rocket.maxFuel = balance.maxFuel;
+            if (!preserveFuel) rocket.pulseFuel = balance.pulseFuel;
+            rocket.maxPulseFuel = balance.maxPulseFuel;
+            rocket.stageCount = Math.max(stageCount, rocket.stageCount);
+            rocket.activeStage = Math.min(rocket.activeStage, rocket.stageCount);
+            const connectedCount = findConnectedParts().size;
+            partCount.textContent = `${connectedCount}/${rocket.parts.length} connected`;
+            undoBtn.disabled = rocket.parts.length === 0;
+
+            // Update UI
+            document.getElementById('stat-mass').textContent = (rocket.mass/1000).toFixed(1);
+            document.getElementById('stat-thrust').textContent = (rocket.thrust/1000).toFixed(1);
+            document.getElementById('stat-fuel').textContent = rocket.maxFuel ? Math.round((rocket.fuel / rocket.maxFuel) * 100) : '0';
+            document.getElementById('stat-pulse-fuel').textContent = rocket.maxPulseFuel ? Math.round((rocket.pulseFuel / rocket.maxPulseFuel) * 100) : '0';
+            document.getElementById('stat-stage').textContent = `${rocket.activeStage}/${rocket.stageCount}`;
+            
+            // Calculate delta-v using the rocket equation
+            if (rocket.thrust > 0) {
+                const exhaustVelocity = rocket.thrust / (rocket.mass * 0.1);
+                const massRatio = rocket.mass / (rocket.mass * 0.7);
+                const deltav = exhaustVelocity * Math.log(massRatio);
+                document.getElementById('stat-deltav').textContent = deltav.toFixed(0);
+            } else {
+                document.getElementById('stat-deltav').textContent = '0';
+            }
+        }
+
+        // Draw build mode
+        function drawBuildMode() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.14)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvasWidth; x += 20) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvasHeight; y += 20) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+                ctx.stroke();
+            }
+
+            // Draw rocket parts
+            const buildCenter = { x: canvasWidth / 2, y: canvasHeight / 2 };
+            rocket.parts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef && partDef.render) {
+                    partDef.render(buildCenter.x + part.x, buildCenter.y + part.y, 0);
+                }
+            });
+
+            const connected = findConnectedParts();
+            rocket.parts.forEach((part, index) => {
+                if (!connected.has(index)) return;
+                const partDef = PARTS[part.type] || {};
+                const connectionRadius = Math.max(16, ((partDef.width || 18) / 2) + 5);
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.5)';
+                ctx.lineWidth = 2;
+                rocket.parts.forEach((other, otherIndex) => {
+                    if (otherIndex <= index || !connected.has(otherIndex)) return;
+                    const otherDef = PARTS[other.type] || {};
+                    const distance = Math.hypot(part.x - other.x, part.y - other.y);
+                    const limit = connectionRadius + Math.max(16, ((otherDef.width || 18) / 2) + 5);
+                    if (distance <= limit) {
+                        ctx.beginPath();
+                        ctx.moveTo(buildCenter.x + part.x, buildCenter.y + part.y);
+                        ctx.lineTo(buildCenter.x + other.x, buildCenter.y + other.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+
+            const balance = computeMassBalance(rocket.parts);
+            const cogMarkerX = buildCenter.x + balance.cog.x;
+            const cogMarkerY = buildCenter.y + balance.cog.y;
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(cogMarkerX - 7, cogMarkerY);
+            ctx.lineTo(cogMarkerX + 7, cogMarkerY);
+            ctx.moveTo(cogMarkerX, cogMarkerY - 7);
+            ctx.lineTo(cogMarkerX, cogMarkerY + 7);
+            ctx.stroke();
+
+            if (gameState === 'building' && selectedPart && cursorPosition) {
+                const previewX = Math.round((cursorPosition.x - buildCenter.x) / 20) * 20;
+                const previewY = Math.round((cursorPosition.y - buildCenter.y) / 20) * 20;
+                const previewPart = PARTS[selectedPart];
+                ctx.save();
+                ctx.fillStyle = 'rgba(34, 211, 238, 0.16)';
+                ctx.strokeStyle = 'rgba(103, 232, 249, 0.95)';
+                ctx.lineWidth = 2;
+                ctx.fillRect(buildCenter.x + previewX - 12, buildCenter.y + previewY - 12, 24, 24);
+                ctx.strokeRect(buildCenter.x + previewX - 12, buildCenter.y + previewY - 12, 24, 24);
+                ctx.restore();
+                if (previewPart && previewPart.render) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.45;
+                    previewPart.render(buildCenter.x + previewX, buildCenter.y + previewY, 0);
+                    ctx.restore();
+                }
+            }
+        }
+
+        // Launch mode physics
+        const MAX_FLIGHT_SPEED = 4;
+        const THRUST_ACCELERATION_SCALE = 0.0035;
+        const FLIGHT_MARGIN = 200;
+        const COAST_DRAG = 0.985;
+        const BRAKE_DRAG = 0.95;
+        const WORLD_WIDTH = 18000;
+        const WORLD_HEIGHT = 12000;
+        let lastFlightTime = 0;
+        let universeTime = 0;
+        const UNIVERSE_SIZE = 60000;
+
+        function getCameraPosition() {
+            const cameraX = Math.max(0, Math.min(rocket.position.x - canvasWidth * 0.5, WORLD_WIDTH - canvasWidth));
+            const cameraY = Math.max(0, Math.min(rocket.position.y - canvasHeight * 0.5, WORLD_HEIGHT - canvasHeight));
+            return { x: cameraX, y: cameraY };
+        }
+
+        function worldToScreen(x, y) {
+            const camera = getCameraPosition();
+            return { x: x - camera.x, y: y - camera.y };
+        }
+        const spaceStars = Array.from({ length: 420 }, (_, index) => {
+            const seed = (index * 9301 + 49297) % 233280;
+            const secondSeed = (seed * 9301 + 49297) % 233280;
+            return {
+                x: (seed / 233280) * UNIVERSE_SIZE,
+                y: (secondSeed / 233280) * UNIVERSE_SIZE,
+                size: index % 13 === 0 ? 2 : index % 4 === 0 ? 1.4 : 0.8,
+                layer: index % 3
+            };
+        });
+
+        function wrap(value, size) {
+            return ((value % size) + size) % size;
+        }
+
+        const celestialBodies = [
+            {
+                x: 900, y: -500, radius: 44, color: '#2563eb', highlight: '#93c5fd',
+                moons: [{ radius: 74, size: 8, color: '#94a3b8', speed: 0.45, phase: 0.5 }]
+            },
+            {
+                x: -1500, y: 980, radius: 30, color: '#b45309', highlight: '#fbbf24',
+                rings: true,
+                moons: [
+                    { radius: 58, size: 5, color: '#cbd5e1', speed: -0.7, phase: 1.2 },
+                    { radius: 88, size: 4, color: '#64748b', speed: 0.3, phase: 2.4 }
+                ]
+            },
+            {
+                x: 2600, y: 1700, radius: 64, color: '#166534', highlight: '#86efac',
+                moons: [{ radius: 102, size: 10, color: '#d6d3d1', speed: 0.2, phase: 2.1 }]
+            },
+            {
+                x: -3600, y: -2200, radius: 22, color: '#9333ea', highlight: '#e9d5ff',
+                moons: []
+            }
+        ];
+
+        function drawCelestialBodies(cameraX, cameraY) {
+            const worldScale = 0.08;
+            celestialBodies.forEach(body => {
+                const bodyX = canvasWidth * 0.5 + (body.x - cameraX) * worldScale;
+                const bodyY = canvasHeight * 0.5 + (body.y - cameraY) * worldScale;
+                if (bodyX < -140 || bodyX > canvasWidth + 140 || bodyY < -140 || bodyY > canvasHeight + 140) return;
+
+                body.moons.forEach(moon => {
+                    const angle = universeTime * moon.speed + moon.phase;
+                    const moonX = bodyX + Math.cos(angle) * moon.radius * worldScale;
+                    const moonY = bodyY + Math.sin(angle) * moon.radius * worldScale;
+                    ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(bodyX, bodyY, moon.radius * worldScale, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = moon.color;
+                    ctx.beginPath();
+                    ctx.arc(moonX, moonY, moon.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                const planetGlow = ctx.createRadialGradient(bodyX - body.radius * 0.35, bodyY - body.radius * 0.35, 2, bodyX, bodyY, body.radius * 1.2);
+                planetGlow.addColorStop(0, body.highlight);
+                planetGlow.addColorStop(0.38, body.color);
+                planetGlow.addColorStop(1, 'rgba(2, 6, 23, 0.2)');
+                ctx.fillStyle = planetGlow;
+                ctx.beginPath();
+                ctx.arc(bodyX, bodyY, body.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (body.rings) {
+                    ctx.strokeStyle = 'rgba(253, 186, 116, 0.65)';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.ellipse(bodyX, bodyY, body.radius * 1.8, body.radius * 0.42, -0.18, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function drawSpaceBackground() {
+            const { x: offsetX, y: offsetY } = rocket.spaceOffset;
+            const camera = getCameraPosition();
+            const cameraX = rocket.universe.x || camera.x;
+            const cameraY = rocket.universe.y || camera.y;
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            const nebulaCenterX = (canvasWidth * 0.52 - cameraX * 0.045 + canvasWidth * 2) % (canvasWidth * 4) - canvasWidth * 2;
+            const nebulaCenterY = (canvasHeight * 0.38 - cameraY * 0.032 + canvasHeight * 2) % (canvasHeight * 4) - canvasHeight * 2;
+            const nebula = ctx.createLinearGradient(0, canvasHeight, canvasWidth, 0);
+            nebula.addColorStop(0, 'rgba(14, 116, 144, 0.24)');
+            nebula.addColorStop(0.42, 'rgba(30, 41, 59, 0.04)');
+            nebula.addColorStop(0.7, 'rgba(124, 58, 237, 0.18)');
+            nebula.addColorStop(1, 'rgba(190, 24, 93, 0.08)');
+            ctx.fillStyle = nebula;
+            ctx.beginPath();
+            ctx.ellipse(canvasWidth * 0.5 + nebulaCenterX * 0.5, canvasHeight * 0.5 + nebulaCenterY * 0.35, canvasWidth * 0.78, canvasHeight * 0.2, -0.28, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const fieldWidth = canvasWidth * 4;
+            const fieldHeight = canvasHeight * 4;
+            spaceStars.forEach(star => {
+                const parallax = [0.18, 0.42, 0.8][star.layer];
+                const x = ((star.x - cameraX * parallax + fieldWidth * 0.5) % fieldWidth + fieldWidth) % fieldWidth - fieldWidth * 0.5;
+                const y = ((star.y - cameraY * parallax + fieldHeight * 0.5) % fieldHeight + fieldHeight) % fieldHeight - fieldHeight * 0.5;
+                const px = canvasWidth * 0.5 + x;
+                const py = canvasHeight * 0.5 + y;
+                if (px < -40 || px > canvasWidth + 40 || py < -40 || py > canvasHeight + 40) return;
+                ctx.fillStyle = star.layer === 2 ? 'rgba(186, 230, 253, 0.9)' : 'rgba(226, 232, 240, 0.62)';
+                ctx.beginPath();
+                ctx.arc(px, py, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            drawCelestialBodies(cameraX, cameraY);
+
+            const speed = Math.hypot(rocket.velocity.x, rocket.velocity.y);
+            if (gameState === 'flying' && speed > 1.2) {
+                const streakCount = Math.min(26, Math.floor(speed * 5));
+                const streakDirectionX = -rocket.velocity.x / speed;
+                const streakDirectionY = -rocket.velocity.y / speed;
+                for (let index = 0; index < streakCount; index++) {
+                    const x = (index * 83 + wrap(offsetX * 2, canvasWidth)) % canvasWidth;
+                    const y = (index * 47 + wrap(offsetY * 2, canvasHeight)) % canvasHeight;
+                    const length = 8 + speed * 4;
+                    ctx.strokeStyle = `rgba(125, 211, 252, ${Math.min(0.55, speed / 10)})`;
+                    ctx.lineWidth = index % 3 === 0 ? 1.5 : 0.7;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + streakDirectionX * length, y + streakDirectionY * length);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        let keys = {};
+        const controlKeys = {
+            left: ['ArrowLeft', 'KeyA'],
+            right: ['ArrowRight', 'KeyD'],
+            thrust: ['ArrowUp', 'KeyW'],
+            reverse: ['ArrowDown', 'KeyS']
+        };
+        window.addEventListener('keydown', event => {
+            keys[event.code] = true;
+            if (Object.values(controlKeys).some(control => control.includes(event.code))) event.preventDefault();
+            if (event.code === 'Space') {
+                event.preventDefault();
+                advanceStage();
+            }
+        });
+        window.addEventListener('keyup', event => keys[event.code] = false);
+
+        flightControls.forEach(control => {
+            const action = control.dataset.control;
+            const setControl = (active, event) => {
+                if (event) event.preventDefault();
+                control.classList.toggle('ring-2', active);
+                control.classList.toggle('ring-cyan-300', active);
+                controlKeys[action].forEach(key => keys[key] = active);
+            };
+            control.addEventListener('pointerdown', event => {
+                control.setPointerCapture(event.pointerId);
+                setControl(true, event);
+            });
+            control.addEventListener('pointerup', event => setControl(false, event));
+            control.addEventListener('pointercancel', event => setControl(false, event));
+            control.addEventListener('pointerleave', event => {
+                if (event.buttons === 0) setControl(false, event);
+            });
+        });
+
+        function findConnectedParts() {
+            if (!rocket.parts.length) return new Set();
+            const components = [];
+            const remaining = new Set(rocket.parts.map((_, index) => index));
+            while (remaining.size) {
+                const component = new Set([remaining.values().next().value]);
+                remaining.delete(component.values().next().value);
+                let changed = true;
+                while (changed) {
+                    changed = false;
+                    rocket.parts.forEach((part, index) => {
+                        if (!remaining.has(index)) return;
+                        const touchesComponent = rocket.parts.some((other, otherIndex) => {
+                            if (!component.has(otherIndex)) return false;
+                            const partDef = PARTS[part.type] || {};
+                            const otherDef = PARTS[other.type] || {};
+                            const connectionDistance = Math.max(
+                                28,
+                                ((partDef.width || 18) + (otherDef.width || 18)) / 2 + 8
+                            );
+                            return Math.hypot(part.x - other.x, part.y - other.y) <= connectionDistance;
+                        });
+                        if (touchesComponent) {
+                            component.add(index);
+                            remaining.delete(index);
+                            changed = true;
+                        }
+                    });
+                }
+                components.push(component);
+            }
+
+            const anchored = components.find(component => [...component].some(index => {
+                const type = rocket.parts[index].type;
+                return type === 'command' || type === 'probe';
+            }));
+            return anchored || components.sort((left, right) => right.size - left.size)[0];
+        }
+
+        function prepareFlightAssembly() {
+            const connected = findConnectedParts();
+            rocket.flightParts = rocket.parts.filter((part, index) => connected.has(index));
+            rocket.debris = rocket.parts
+                .filter((part, index) => !connected.has(index))
+                .map((part, index) => ({
+                    ...part,
+                    position: {
+                        x: rocket.position.x + part.x,
+                        y: rocket.position.y + part.y
+                    },
+                    velocity: {
+                        x: rocket.velocity.x + (index % 2 ? 0.8 : -0.8),
+                        y: rocket.velocity.y - 0.4
+                    },
+                    rotation: 0,
+                    spin: index % 2 ? 0.025 : -0.025
+                }));
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            if (rocket.debris.length) {
+                buildStatus.textContent = `${rocket.debris.length} unconnected part${rocket.debris.length === 1 ? '' : 's'} broke loose.`;
+            }
+        }
+
+        function updateDebris() {
+            rocket.debris = rocket.debris.filter(debris => {
+                debris.position.x += debris.velocity.x;
+                debris.position.y += debris.velocity.y;
+                debris.velocity.y += 0.012;
+                debris.rotation += debris.spin;
+                return debris.position.x > -80 && debris.position.x < WORLD_WIDTH + 80 &&
+                    debris.position.y > -80 && debris.position.y < WORLD_HEIGHT + 80;
+            });
+        }
+
+        function drawDebris() {
+            rocket.debris.forEach(debris => {
+                const partDef = PARTS[debris.type];
+                if (partDef && partDef.render) {
+                    const screen = worldToScreen(debris.position.x, debris.position.y);
+                    ctx.save();
+                    ctx.globalAlpha = 0.9;
+                    partDef.render(screen.x, screen.y, debris.rotation);
+                    ctx.restore();
+                }
+            });
+        }
+
+        function drawActiveEngineExhaust(thrusting, reversing) {
+            if (!thrusting && !reversing) return;
+            const activeEngines = rocket.flightParts
+                .filter(part => part.stage === rocket.activeStage && (PARTS[part.type]?.thrust || 0) > 0)
+                .sort((left, right) => right.y - left.y);
+            const engine = activeEngines[0];
+            if (!engine) return;
+
+            const engineDef = PARTS[engine.type];
+            const activeStageParts = rocket.flightParts.filter(part => part.stage === rocket.activeStage);
+            const stageCenterX = activeStageParts.reduce((sum, part) => sum + part.x, 0) / activeStageParts.length;
+            const stageCenterY = activeStageParts.reduce((sum, part) => sum + part.y, 0) / activeStageParts.length;
+            const nozzleY = stageCenterY + (engineDef.height || 20) / 2;
+            const flameLength = 78;
+            const flameWidth = Math.max(8, Math.min(22, (engineDef.width || 14) * 0.9));
+
+            const outerFlame = ctx.createLinearGradient(stageCenterX, nozzleY, stageCenterX, nozzleY + flameLength);
+            outerFlame.addColorStop(0, reversing ? '#fff7ed' : '#fff1a8');
+            outerFlame.addColorStop(0.18, '#fb923c');
+            outerFlame.addColorStop(0.58, '#ef4444');
+            outerFlame.addColorStop(1, 'rgba(127, 29, 29, 0)');
+            ctx.fillStyle = outerFlame;
+            ctx.beginPath();
+            ctx.moveTo(stageCenterX - flameWidth / 2, nozzleY);
+            ctx.quadraticCurveTo(stageCenterX - flameWidth * 0.72, nozzleY + flameLength * 0.45, stageCenterX - 2, nozzleY + flameLength);
+            ctx.quadraticCurveTo(stageCenterX + flameWidth * 0.72, nozzleY + flameLength * 0.45, stageCenterX + flameWidth / 2, nozzleY);
+            ctx.closePath();
+            ctx.fill();
+
+            const coreLength = flameLength * 0.62;
+            const core = ctx.createLinearGradient(stageCenterX, nozzleY, stageCenterX, nozzleY + coreLength);
+            core.addColorStop(0, '#ffffff');
+            core.addColorStop(0.28, '#fef3c7');
+            core.addColorStop(0.75, '#fbbf24');
+            core.addColorStop(1, 'rgba(249, 115, 22, 0)');
+            ctx.fillStyle = core;
+            ctx.beginPath();
+            ctx.moveTo(stageCenterX - flameWidth * 0.22, nozzleY);
+            ctx.quadraticCurveTo(stageCenterX - flameWidth * 0.3, nozzleY + coreLength * 0.45, stageCenterX, nozzleY + coreLength);
+            ctx.quadraticCurveTo(stageCenterX + flameWidth * 0.3, nozzleY + coreLength * 0.45, stageCenterX + flameWidth * 0.22, nozzleY);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(254, 215, 170, 0.38)';
+            ctx.beginPath();
+            ctx.arc(stageCenterX - flameWidth * 0.7, nozzleY + flameLength * 0.46, 3, 0, Math.PI * 2);
+            ctx.arc(stageCenterX + flameWidth * 0.72, nozzleY + flameLength * 0.62, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Launch button
+        launchBtn.addEventListener('click', () => {
+            if (rocket.thrust <= 0) {
+                buildStatus.textContent = 'Add an engine before launching.';
+                return;
+            }
+            const hasConventionalEngine = rocket.parts.some(part =>
+                part.stage === rocket.activeStage && (PARTS[part.type]?.thrust || 0) > 0 && part.type !== 'pulseDrive'
+            );
+            const hasPulseDrive = rocket.parts.some(part =>
+                part.stage === rocket.activeStage && part.type === 'pulseDrive'
+            );
+            if ((hasConventionalEngine && rocket.fuel <= 0) || (hasPulseDrive && rocket.pulseFuel <= 0)) {
+                buildStatus.textContent = hasPulseDrive ? 'Add Nuclear Pellets for the pulse drive.' : 'Add a fuel tank before launching.';
+                return;
+            }
+            if (rocket.parts.length > 0 && rocket.mass > 0) {
+                gameState = 'flying';
+                launchBtn.disabled = true;
+                undoBtn.disabled = true;
+                resetBtn.disabled = true;
+                stageBtn.disabled = rocket.stageCount < 2;
+                modeLabel.textContent = 'FLIGHT MODE';
+                buildStatus.textContent = 'Flight active. Use W/S to thrust and reverse, A/D to rotate.';
+                rocket.position = { x: WORLD_WIDTH * 0.5, y: WORLD_HEIGHT * 0.7 };
+                rocket.velocity = { x: 0, y: 0 };
+                rocket.rotation = 0;
+                rocket.angularVelocity = 0;
+                rocket.universe = { x: rocket.position.x, y: rocket.position.y };
+                rocket.spaceOffset = { x: 0, y: 0 };
+                rocket.hasMoved = false;
+                buildStatus.textContent = 'Flight active. Use W/S to thrust and reverse, A/D to rotate.';
+                lastFlightTime = 0;
+                prepareFlightAssembly();
+                requestAnimationFrame(updateFlight);
+            }
+        });
+
+        function advanceStage() {
+            if (gameState !== 'flying' || rocket.activeStage >= rocket.stageCount) return;
+            const spentStage = rocket.activeStage;
+            const nextStage = spentStage + 1;
+            const separationId = `stage-${spentStage}-${Date.now()}`;
+            const cosRotation = Math.cos(rocket.rotation);
+            const sinRotation = Math.sin(rocket.rotation);
+            const separatingParts = rocket.flightParts.filter(part => part.stage === spentStage);
+            separatingParts.forEach((part, index) => {
+                const relativeX = part.x - rocket.cog.x;
+                const relativeY = part.y - rocket.cog.y;
+                rocket.debris.push({
+                    ...part,
+                    position: {
+                        x: rocket.position.x + relativeX * cosRotation - relativeY * sinRotation,
+                        y: rocket.position.y + relativeX * sinRotation + relativeY * cosRotation
+                    },
+                    velocity: {
+                        x: rocket.velocity.x,
+                        y: rocket.velocity.y
+                    },
+                    rotation: rocket.rotation,
+                    spin: 0,
+                    separationId
+                });
+            });
+            rocket.flightParts = rocket.flightParts.filter(part => part.stage !== spentStage);
+            rocket.activeStage = nextStage;
+            updateRocketStats(true);
+            buildStatus.textContent = `Stage ${rocket.activeStage} active. Stage ${spentStage} separated.`;
+            if (rocket.activeStage >= rocket.stageCount) stageBtn.disabled = true;
+        }
+
+        stageBtn.addEventListener('click', advanceStage);
+
+        // Flight mode update
+        function updateFlight(timestamp) {
+            if (gameState !== 'flying') return;
+
+            if (!lastFlightTime) lastFlightTime = timestamp;
+            universeTime = timestamp * 0.001;
+            const frameScale = Math.min(2, Math.max(0.25, (timestamp - lastFlightTime) / 16.667));
+            lastFlightTime = timestamp;
+
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+
+            // Handle input
+            const turningLeft = controlKeys.left.some(key => keys[key]);
+            const turningRight = controlKeys.right.some(key => keys[key]);
+            const pulseDriveActive = rocket.flightParts.some(part => part.stage === rocket.activeStage && part.type === 'pulseDrive');
+            const conventionalDriveActive = rocket.flightParts.some(part => part.stage === rocket.activeStage && part.type !== 'pulseDrive' && (PARTS[part.type]?.thrust || 0) > 0);
+            const hasDriveFuel = (pulseDriveActive && rocket.pulseFuel > 0) || (conventionalDriveActive && rocket.fuel > 0);
+            const thrusting = controlKeys.thrust.some(key => keys[key]) && hasDriveFuel;
+            const reversing = controlKeys.reverse.some(key => keys[key]);
+            const movingInput = (thrusting || reversing) && rocket.thrust > 0;
+
+            if (thrusting || reversing) {
+                const thrustDirection = reversing ? -1 : 1;
+                const thrust = rocket.thrust / Math.max(rocket.mass, 1) * thrustDirection;
+                const thrustAxisX = Math.sin(rocket.rotation);
+                const thrustAxisY = -Math.cos(rocket.rotation);
+                const leverX = rocket.thrustCenter.x - rocket.cog.x;
+                const torqueFactor = -leverX * thrustDirection * 0.03;
+                const acceleration = thrust * THRUST_ACCELERATION_SCALE;
+                const torqueScale = pulseDriveActive ? 0.18 : 1;
+
+                rocket.angularVelocity += torqueFactor * acceleration * 0.8 * torqueScale * frameScale;
+
+                rocket.velocity.x += thrustAxisX * acceleration * frameScale;
+                rocket.velocity.y += thrustAxisY * acceleration * frameScale;
+                if (pulseDriveActive) rocket.pulseFuel = Math.max(0, rocket.pulseFuel - 0.12);
+                if (conventionalDriveActive) rocket.fuel = Math.max(0, rocket.fuel - 0.35);
+                document.getElementById('stat-fuel').textContent = rocket.maxFuel
+                    ? Math.round((rocket.fuel / rocket.maxFuel) * 100)
+                    : '0';
+                document.getElementById('stat-pulse-fuel').textContent = rocket.maxPulseFuel
+                    ? Math.round((rocket.pulseFuel / rocket.maxPulseFuel) * 100)
+                    : '0';
+            } else {
+                rocket.angularVelocity *= 0.985;
+            }
+
+            if (turningLeft || turningRight) {
+                rocket.angularVelocity += (turningLeft ? -0.0035 : 0) * frameScale;
+                rocket.angularVelocity += (turningRight ? 0.0035 : 0) * frameScale;
+            }
+
+            rocket.angularVelocity *= 0.88;
+            rocket.rotation += rocket.angularVelocity * frameScale;
+
+            if (movingInput) rocket.hasMoved = true;
+
+            if (rocket.hasMoved) {
+                const drag = reversing ? BRAKE_DRAG : COAST_DRAG;
+                rocket.velocity.x *= drag;
+                rocket.velocity.y *= drag;
+            }
+
+            const speed = Math.hypot(rocket.velocity.x, rocket.velocity.y);
+            if (speed > MAX_FLIGHT_SPEED) {
+                const speedScale = MAX_FLIGHT_SPEED / speed;
+                rocket.velocity.x *= speedScale;
+                rocket.velocity.y *= speedScale;
+            }
+
+            // Update position across a much larger flight world
+            rocket.position.x += rocket.velocity.x * frameScale;
+            rocket.position.y += rocket.velocity.y * frameScale;
+            rocket.universe.x = rocket.position.x;
+            rocket.universe.y = rocket.position.y;
+
+            if (rocket.position.x < FLIGHT_MARGIN) {
+                rocket.position.x = FLIGHT_MARGIN;
+                if (rocket.velocity.x < 0) rocket.velocity.x = 0;
+            } else if (rocket.position.x > WORLD_WIDTH - FLIGHT_MARGIN) {
+                rocket.position.x = WORLD_WIDTH - FLIGHT_MARGIN;
+                if (rocket.velocity.x > 0) rocket.velocity.x = 0;
+            }
+            if (rocket.position.y < FLIGHT_MARGIN) {
+                rocket.position.y = FLIGHT_MARGIN;
+                if (rocket.velocity.y < 0) rocket.velocity.y = 0;
+            } else if (rocket.position.y > WORLD_HEIGHT - FLIGHT_MARGIN) {
+                rocket.position.y = WORLD_HEIGHT - FLIGHT_MARGIN;
+                if (rocket.velocity.y > 0) rocket.velocity.y = 0;
+            }
+
+            updateDebris();
+
+            rocket.spaceOffset.x -= rocket.velocity.x * 2.4;
+            rocket.spaceOffset.y -= rocket.velocity.y * 2.4;
+            drawSpaceBackground();
+
+            const screenPosition = worldToScreen(rocket.position.x, rocket.position.y);
+
+            // Draw rocket
+            ctx.save();
+            ctx.translate(screenPosition.x, screenPosition.y);
+            ctx.rotate(rocket.rotation);
+            
+            rocket.flightParts.forEach(part => {
+                const partDef = PARTS[part.type];
+                if (partDef && partDef.render) {
+                    partDef.render(part.x - rocket.cog.x, part.y - rocket.cog.y, 0);
+                }
+            });
+
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-7, 0);
+            ctx.lineTo(7, 0);
+            ctx.moveTo(0, -7);
+            ctx.lineTo(0, 7);
+            ctx.stroke();
+
+            drawActiveEngineExhaust(thrusting, reversing);
+            
+            ctx.restore();
+            drawDebris();
+
+            // Update flight data
+            const altitude = Math.max(0, (WORLD_HEIGHT - rocket.position.y) * 0.1);
+
+            const velocity = Math.hypot(rocket.velocity.x, rocket.velocity.y) * 100;
+
+            document.getElementById('stat-altitude').textContent = Math.max(0, altitude.toFixed(1));
+            document.getElementById('stat-velocity').textContent = velocity.toFixed(0);
+
+            const phase = altitude <= 0 ? 'PAD' : altitude < 10 ? 'LIFTOFF' : altitude < 80 ? 'ASCENT' : 'HIGH ASCENT';
+            document.getElementById('stat-phase').textContent = phase;
+
+            requestAnimationFrame(updateFlight);
+        }
+
+        undoBtn.addEventListener('click', () => {
+            if (gameState !== 'building') return;
+            rocket.parts.pop();
+            updateRocketStats();
+            drawBuildMode();
+            buildStatus.textContent = rocket.parts.length ? 'Last part removed.' : 'Select a part, then click the build area.';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            rocket.parts = [];
+            rocket.position = { x: 0, y: 0 };
+            rocket.velocity = { x: 0, y: 0 };
+            rocket.rotation = 0;
+            rocket.angularVelocity = 0;
+            rocket.universe = { x: 0, y: 0 };
+            rocket.mass = 0;
+            rocket.thrust = 0;
+            rocket.fuel = 0;
+            rocket.maxFuel = 0;
+            rocket.pulseFuel = 0;
+            rocket.maxPulseFuel = 0;
+            rocket.cog = { x: 0, y: 0 };
+            rocket.thrustCenter = { x: 0, y: 0 };
+            rocket.activeStage = 1;
+            rocket.stageCount = 1;
+            rocket.flightParts = [];
+            rocket.debris = [];
+            rocket.spaceOffset = { x: 0, y: 0 };
+            rocket.hasMoved = false;
+            lastFlightTime = 0;
+            gameState = 'building';
+            launchBtn.disabled = false;
+            undoBtn.disabled = true;
+            resetBtn.disabled = false;
+            stageBtn.disabled = true;
+            modeLabel.textContent = 'BUILD MODE';
+            buildStatus.textContent = 'Select a part, then click the build area.';
+            document.getElementById('stat-altitude').textContent = '0';
+            document.getElementById('stat-velocity').textContent = '0';
+            document.getElementById('stat-phase').textContent = 'PAD';
+            updateRocketStats();
+            drawBuildMode();
+        });
+
+        // Initial draw
+        drawBuildMode();
+    </script>
+</body>
+</html>
