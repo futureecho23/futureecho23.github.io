@@ -1144,10 +1144,14 @@
 
         function switchToDebrisVessel(event) {
             const { x, y } = getCanvasPosition(event);
+            const camera = getCameraPosition();
+            const worldX = x + camera.x;
+            const worldY = y + camera.y;
             const target = rocket.debris.find(debris => {
+                if (!debris.separationId) return false;
                 const partDef = PARTS[debris.type] || {};
                 const hitRadius = Math.max(18, Math.max(partDef.width || 18, partDef.height || 18) / 2 + 8);
-                return Math.hypot(debris.position.x - x, debris.position.y - y) <= hitRadius;
+                return Math.hypot(debris.position.x - worldX, debris.position.y - worldY) <= hitRadius;
             });
             if (!target || !target.separationId) return false;
 
@@ -1191,7 +1195,7 @@
             rocket.velocity = velocity;
             rocket.rotation = vesselRotation;
             rocket.angularVelocity = 0;
-            rocket.activeStage = target.stage || rocket.activeStage;
+            rocket.activeStage = Math.min(...selectedDebris.map(debris => debris.stage || rocket.activeStage));
             const balance = computeMassBalance(rocket.flightParts);
             rocket.mass = balance.mass;
             rocket.thrust = balance.thrust;
@@ -1199,6 +1203,7 @@
             rocket.thrustCenter = balance.thrustCenter;
             rocket.position.x += balance.cog.x * cosRotation - balance.cog.y * sinRotation;
             rocket.position.y += balance.cog.x * sinRotation + balance.cog.y * cosRotation;
+            stageBtn.disabled = !rocket.flightParts.some(part => part.stage > rocket.activeStage);
             buildStatus.textContent = 'Vessel switched. Flight controls now follow the selected separated stage.';
             return true;
         }
@@ -1667,6 +1672,10 @@
 
         function updateDebris() {
             rocket.debris = rocket.debris.filter(debris => {
+                if (debris.stationary) {
+                    return debris.position.x > -80 && debris.position.x < WORLD_WIDTH + 80 &&
+                        debris.position.y > -80 && debris.position.y < WORLD_HEIGHT + 80;
+                }
                 debris.position.x += debris.velocity.x;
                 debris.position.y += debris.velocity.y;
                 debris.velocity.y += 0.012;
@@ -1781,6 +1790,7 @@
             const cosRotation = Math.cos(rocket.rotation);
             const sinRotation = Math.sin(rocket.rotation);
             const separatingParts = rocket.flightParts.filter(part => part.stage === spentStage);
+            const hasSlaDecoupler = separatingParts.some(part => part.type === 'slaDecoupler');
             separatingParts.filter(part => part.type === 'slaDecoupler').forEach(decoupler => {
                 const panelOffsets = [
                     { x: -12, y: -12 }, { x: -12, y: 4 },
@@ -1803,10 +1813,37 @@
                         },
                         rotation: rocket.rotation,
                         spin: outward * 0.035,
-                        separationId
+                        separationId: null
                     });
                 });
             });
+
+            if (hasSlaDecoupler) {
+                const releasedParts = rocket.flightParts.filter(part => part.stage > spentStage);
+                const vesselSeparationId = `sla-vessel-${Date.now()}`;
+                releasedParts.forEach(part => {
+                    const relativeX = part.x - rocket.cog.x;
+                    const relativeY = part.y - rocket.cog.y;
+                    rocket.debris.push({
+                        ...part,
+                        position: {
+                            x: rocket.position.x + relativeX * cosRotation - relativeY * sinRotation,
+                            y: rocket.position.y + relativeX * sinRotation + relativeY * cosRotation
+                        },
+                        velocity: { x: 0, y: 0 },
+                        rotation: rocket.rotation,
+                        spin: 0,
+                        stationary: true,
+                        separationId: vesselSeparationId
+                    });
+                });
+                rocket.flightParts = rocket.flightParts.filter(part => part.stage <= spentStage);
+                updateRocketStats(true);
+                stageBtn.disabled = !rocket.flightParts.some(part => part.stage > rocket.activeStage);
+                buildStatus.textContent = 'SLA released the upper craft. Left-click it to take control.';
+                return;
+            }
+
             separatingParts.forEach((part, index) => {
                 const relativeX = part.x - rocket.cog.x;
                 const relativeY = part.y - rocket.cog.y;
@@ -1829,7 +1866,7 @@
             rocket.activeStage = nextStage;
             updateRocketStats(true);
             buildStatus.textContent = `Stage ${rocket.activeStage} active. Stage ${spentStage} separated.`;
-            if (rocket.activeStage >= rocket.stageCount) stageBtn.disabled = true;
+            stageBtn.disabled = !rocket.flightParts.some(part => part.stage > rocket.activeStage);
         }
 
         stageBtn.addEventListener('click', advanceStage);
