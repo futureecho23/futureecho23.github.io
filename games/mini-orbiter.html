@@ -1581,7 +1581,7 @@
             if (Object.values(controlKeys).some(control => control.includes(event.code))) event.preventDefault();
             if (event.code === 'Space') {
                 event.preventDefault();
-                advanceStage();
+                if (!event.repeat) advanceStage();
             }
         });
         window.addEventListener('keyup', event => keys[event.code] = false);
@@ -1788,6 +1788,7 @@
             if (gameState !== 'flying' || rocket.activeStage >= rocket.stageCount) return;
             const spentStage = rocket.activeStage;
             const nextStage = spentStage + 1;
+            if (!rocket.flightParts.some(part => part.stage > spentStage)) return;
             const separationId = `stage-${spentStage}-${Date.now()}`;
             const cosRotation = Math.cos(rocket.rotation);
             const sinRotation = Math.sin(rocket.rotation);
@@ -1839,7 +1840,9 @@
                         separationId: vesselSeparationId
                     });
                 });
-                rocket.flightParts = rocket.flightParts.filter(part => part.stage <= spentStage);
+                rocket.flightParts = rocket.flightParts.filter(part =>
+                    part.stage <= spentStage && part.type !== 'slaDecoupler'
+                );
                 updateRocketStats(true);
                 stageBtn.disabled = !rocket.flightParts.some(part => part.stage > rocket.activeStage);
                 buildStatus.textContent = 'SLA released the upper craft. Left-click it to take control.';
