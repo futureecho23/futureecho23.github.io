@@ -1672,7 +1672,9 @@
 
         function updateDebris() {
             rocket.debris = rocket.debris.filter(debris => {
-                if (debris.stationary) {
+                if (debris.inertial) {
+                    debris.position.x += debris.velocity.x;
+                    debris.position.y += debris.velocity.y;
                     return debris.position.x > -80 && debris.position.x < WORLD_WIDTH + 80 &&
                         debris.position.y > -80 && debris.position.y < WORLD_HEIGHT + 80;
                 }
@@ -1830,10 +1832,10 @@
                             x: rocket.position.x + relativeX * cosRotation - relativeY * sinRotation,
                             y: rocket.position.y + relativeX * sinRotation + relativeY * cosRotation
                         },
-                        velocity: { x: 0, y: 0 },
+                        velocity: { x: rocket.velocity.x, y: rocket.velocity.y },
                         rotation: rocket.rotation,
                         spin: 0,
-                        stationary: true,
+                        inertial: true,
                         separationId: vesselSeparationId
                     });
                 });
