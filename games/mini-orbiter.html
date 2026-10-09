@@ -1147,16 +1147,6 @@
             const targetPorts = debrisParts.filter(part => part.type === 'dockingPort');
             if (!activePorts.length || !targetPorts.length) return false;
 
-            const targetVelocity = debrisParts.reduce((sum, part) => ({
-                x: sum.x + part.velocity.x / debrisParts.length,
-                y: sum.y + part.velocity.y / debrisParts.length
-            }), { x: 0, y: 0 });
-            const relativeSpeed = Math.hypot(
-                rocket.velocity.x - targetVelocity.x,
-                rocket.velocity.y - targetVelocity.y
-            );
-            if (relativeSpeed > 0.5) return false;
-
             const cosRotation = Math.cos(rocket.rotation);
             const sinRotation = Math.sin(rocket.rotation);
             const dockingDistance = activePorts.reduce((closest, port) => {
@@ -1167,7 +1157,12 @@
                     worldY - target.position.y
                 )));
             }, Infinity);
-            if (dockingDistance > 28) return false;
+            if (dockingDistance > 18) return false;
+
+            const targetVelocity = debrisParts.reduce((sum, part) => ({
+                x: sum.x + part.velocity.x / debrisParts.length,
+                y: sum.y + part.velocity.y / debrisParts.length
+            }), { x: 0, y: 0 });
 
             const oldCog = { ...rocket.cog };
             const oldMass = rocket.mass;
@@ -1748,6 +1743,16 @@
             });
         }
 
+        function autoDockNearbyVessels() {
+            const vesselIds = [...new Set(rocket.debris
+                .filter(part => part.separationId)
+                .map(part => part.separationId))];
+            for (const vesselId of vesselIds) {
+                const vesselParts = rocket.debris.filter(part => part.separationId === vesselId);
+                if (tryDockDebrisVessel(vesselParts)) break;
+            }
+        }
+
         function drawDebris() {
             rocket.debris.forEach(debris => {
                 const partDef = PARTS[debris.type];
@@ -2031,6 +2036,7 @@
             }
 
             updateDebris();
+            autoDockNearbyVessels();
 
             rocket.spaceOffset.x -= rocket.velocity.x * 2.4;
             rocket.spaceOffset.y -= rocket.velocity.y * 2.4;
