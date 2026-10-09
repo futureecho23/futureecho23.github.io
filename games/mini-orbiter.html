@@ -1142,6 +1142,66 @@
             drawBuildMode();
         });
 
+        function tryDockDebrisVessel(debrisParts) {
+            const activePorts = rocket.flightParts.filter(part => part.type === 'dockingPort');
+            const targetPorts = debrisParts.filter(part => part.type === 'dockingPort');
+            if (!activePorts.length || !targetPorts.length) return false;
+
+            const targetVelocity = debrisParts.reduce((sum, part) => ({
+                x: sum.x + part.velocity.x / debrisParts.length,
+                y: sum.y + part.velocity.y / debrisParts.length
+            }), { x: 0, y: 0 });
+            const relativeSpeed = Math.hypot(
+                rocket.velocity.x - targetVelocity.x,
+                rocket.velocity.y - targetVelocity.y
+            );
+            if (relativeSpeed > 0.5) return false;
+
+            const cosRotation = Math.cos(rocket.rotation);
+            const sinRotation = Math.sin(rocket.rotation);
+            const dockingDistance = activePorts.reduce((closest, port) => {
+                const worldX = rocket.position.x + (port.x - rocket.cog.x) * cosRotation - (port.y - rocket.cog.y) * sinRotation;
+                const worldY = rocket.position.y + (port.x - rocket.cog.x) * sinRotation + (port.y - rocket.cog.y) * cosRotation;
+                return Math.min(closest, ...targetPorts.map(target => Math.hypot(
+                    worldX - target.position.x,
+                    worldY - target.position.y
+                )));
+            }, Infinity);
+            if (dockingDistance > 28) return false;
+
+            const oldCog = { ...rocket.cog };
+            const oldMass = rocket.mass;
+            const dockedParts = debrisParts.map(part => ({
+                ...part,
+                x: (part.position.x - rocket.position.x) * cosRotation + (part.position.y - rocket.position.y) * sinRotation + oldCog.x,
+                y: -(part.position.x - rocket.position.x) * sinRotation + (part.position.y - rocket.position.y) * cosRotation + oldCog.y,
+                stage: rocket.activeStage
+            }));
+            const dockedBalance = computeMassBalance(dockedParts);
+            rocket.flightParts.push(...dockedParts);
+            rocket.debris = rocket.debris.filter(part => part.separationId !== debrisParts[0].separationId);
+
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.position.x += (balance.cog.x - oldCog.x) * cosRotation - (balance.cog.y - oldCog.y) * sinRotation;
+            rocket.position.y += (balance.cog.x - oldCog.x) * sinRotation + (balance.cog.y - oldCog.y) * cosRotation;
+            const combinedMass = oldMass + dockedBalance.mass;
+            if (combinedMass > 0) {
+                rocket.velocity.x = (rocket.velocity.x * oldMass + targetVelocity.x * dockedBalance.mass) / combinedMass;
+                rocket.velocity.y = (rocket.velocity.y * oldMass + targetVelocity.y * dockedBalance.mass) / combinedMass;
+            }
+            rocket.mass = balance.mass;
+            rocket.thrust = balance.thrust;
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            rocket.fuel = Math.min(balance.maxFuel, rocket.fuel + dockedBalance.fuel);
+            rocket.maxFuel = balance.maxFuel;
+            rocket.pulseFuel = Math.min(balance.maxPulseFuel, rocket.pulseFuel + dockedBalance.pulseFuel);
+            rocket.maxPulseFuel = balance.maxPulseFuel;
+            stageBtn.disabled = !rocket.flightParts.some(part => part.stage > rocket.activeStage);
+            buildStatus.textContent = 'Docking complete. Vessels joined.';
+            return true;
+        }
+
         function switchToDebrisVessel(event) {
             const { x, y } = getCanvasPosition(event);
             const camera = getCameraPosition();
@@ -1156,6 +1216,7 @@
             if (!target || !target.separationId) return false;
 
             const selectedDebris = rocket.debris.filter(debris => debris.separationId === target.separationId);
+            if (tryDockDebrisVessel(selectedDebris)) return true;
             const center = selectedDebris.reduce((sum, debris) => ({
                 x: sum.x + debris.position.x / selectedDebris.length,
                 y: sum.y + debris.position.y / selectedDebris.length
