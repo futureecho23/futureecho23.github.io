@@ -325,7 +325,7 @@
                     <button type="button" class="flight-control action-button rounded-xl border border-cyan-400/50 bg-cyan-500/90 py-3 text-lg font-bold text-slate-950" data-control="thrust" aria-label="Thrust">↑</button>
                     <button type="button" class="flight-control action-button rounded-xl border border-slate-600 bg-slate-800/80 py-3 text-lg text-slate-200" data-control="right" aria-label="Rotate right">↷</button>
                 </div>
-                <p class="mt-3 text-center text-xs text-slate-500">WASD: W throttle, S brake, A/D steer. Space: stage.</p>
+                <p class="mt-3 text-center text-xs text-slate-500">WASD: W throttle, S brake, A/D steer. Space: stage. E: dock, Q: undock. Click a ship to switch.</p>
             </div>
         </div>
     </div>
@@ -1166,11 +1166,13 @@
 
             const oldCog = { ...rocket.cog };
             const oldMass = rocket.mass;
+            const dockedGroupId = `docked-${Date.now()}`;
             const dockedParts = debrisParts.map(part => ({
                 ...part,
                 x: (part.position.x - rocket.position.x) * cosRotation + (part.position.y - rocket.position.y) * sinRotation + oldCog.x,
                 y: -(part.position.x - rocket.position.x) * sinRotation + (part.position.y - rocket.position.y) * cosRotation + oldCog.y,
-                stage: rocket.activeStage
+                stage: rocket.activeStage,
+                dockedGroupId
             }));
             const dockedBalance = computeMassBalance(dockedParts);
             rocket.flightParts.push(...dockedParts);
@@ -1197,6 +1199,75 @@
             return true;
         }
 
+        function dockNearbyVessel() {
+            if (gameState !== 'flying') return false;
+            const vesselIds = [...new Set(rocket.debris
+                .filter(part => part.separationId)
+                .map(part => part.separationId))];
+            for (const vesselId of vesselIds) {
+                const vesselParts = rocket.debris.filter(part => part.separationId === vesselId);
+                if (tryDockDebrisVessel(vesselParts)) return true;
+            }
+            buildStatus.textContent = 'Bring both docking ports close together, then press E.';
+            return false;
+        }
+
+        function undockVessel() {
+            if (gameState !== 'flying') return false;
+            const dockedGroupId = [...rocket.flightParts]
+                .reverse()
+                .find(part => part.dockedGroupId)?.dockedGroupId;
+            if (!dockedGroupId) {
+                buildStatus.textContent = 'No docked vessel to undock.';
+                return false;
+            }
+
+            const cosRotation = Math.cos(rocket.rotation);
+            const sinRotation = Math.sin(rocket.rotation);
+            const detachedParts = rocket.flightParts.filter(part => part.dockedGroupId === dockedGroupId);
+            const separationId = `undocked-${Date.now()}`;
+            detachedParts.forEach(part => {
+                const relativeX = part.x - rocket.cog.x;
+                const relativeY = part.y - rocket.cog.y;
+                rocket.debris.push({
+                    ...part,
+                    position: {
+                        x: rocket.position.x + relativeX * cosRotation - relativeY * sinRotation,
+                        y: rocket.position.y + relativeX * sinRotation + relativeY * cosRotation
+                    },
+                    velocity: { x: rocket.velocity.x, y: rocket.velocity.y },
+                    rotation: rocket.rotation,
+                    spin: 0,
+                    inertial: true,
+                    dockedGroupId: null,
+                    separationId
+                });
+            });
+
+            const oldCog = { ...rocket.cog };
+            rocket.flightParts = rocket.flightParts.filter(part => part.dockedGroupId !== dockedGroupId);
+            const balance = computeMassBalance(rocket.flightParts);
+            rocket.position.x += (balance.cog.x - oldCog.x) * cosRotation - (balance.cog.y - oldCog.y) * sinRotation;
+            rocket.position.y += (balance.cog.x - oldCog.x) * sinRotation + (balance.cog.y - oldCog.y) * cosRotation;
+            rocket.mass = balance.mass;
+            rocket.thrust = balance.thrust;
+            rocket.cog = balance.cog;
+            rocket.thrustCenter = balance.thrustCenter;
+            rocket.maxFuel = balance.maxFuel;
+            rocket.fuel = Math.min(rocket.fuel, balance.maxFuel);
+            rocket.maxPulseFuel = balance.maxPulseFuel;
+            rocket.pulseFuel = Math.min(rocket.pulseFuel, balance.maxPulseFuel);
+            document.getElementById('stat-fuel').textContent = rocket.maxFuel
+                ? Math.round((rocket.fuel / rocket.maxFuel) * 100)
+                : '0';
+            document.getElementById('stat-pulse-fuel').textContent = rocket.maxPulseFuel
+                ? Math.round((rocket.pulseFuel / rocket.maxPulseFuel) * 100)
+                : '0';
+            stageBtn.disabled = !rocket.flightParts.some(part => part.stage > rocket.activeStage);
+            buildStatus.textContent = 'Vessel undocked. Press E to dock again.';
+            return true;
+        }
+
         function switchToDebrisVessel(event) {
             const { x, y } = getCanvasPosition(event);
             const camera = getCameraPosition();
@@ -1211,7 +1282,6 @@
             if (!target || !target.separationId) return false;
 
             const selectedDebris = rocket.debris.filter(debris => debris.separationId === target.separationId);
-            if (tryDockDebrisVessel(selectedDebris)) return true;
             const center = selectedDebris.reduce((sum, debris) => ({
                 x: sum.x + debris.position.x / selectedDebris.length,
                 y: sum.y + debris.position.y / selectedDebris.length
@@ -1638,6 +1708,12 @@
             if (event.code === 'Space') {
                 event.preventDefault();
                 if (!event.repeat) advanceStage();
+            } else if (event.code === 'KeyE') {
+                event.preventDefault();
+                if (!event.repeat) dockNearbyVessel();
+            } else if (event.code === 'KeyQ') {
+                event.preventDefault();
+                if (!event.repeat) undockVessel();
             }
         });
         window.addEventListener('keyup', event => keys[event.code] = false);
@@ -1741,16 +1817,6 @@
                 return debris.position.x > -80 && debris.position.x < WORLD_WIDTH + 80 &&
                     debris.position.y > -80 && debris.position.y < WORLD_HEIGHT + 80;
             });
-        }
-
-        function autoDockNearbyVessels() {
-            const vesselIds = [...new Set(rocket.debris
-                .filter(part => part.separationId)
-                .map(part => part.separationId))];
-            for (const vesselId of vesselIds) {
-                const vesselParts = rocket.debris.filter(part => part.separationId === vesselId);
-                if (tryDockDebrisVessel(vesselParts)) break;
-            }
         }
 
         function drawDebris() {
@@ -2036,7 +2102,6 @@
             }
 
             updateDebris();
-            autoDockNearbyVessels();
 
             rocket.spaceOffset.x -= rocket.velocity.x * 2.4;
             rocket.spaceOffset.y -= rocket.velocity.y * 2.4;
