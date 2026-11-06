@@ -318,6 +318,7 @@
                     <canvas id="gameCanvas"></canvas>
                     <div class="pointer-events-none absolute left-4 top-4 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
                         <span id="mode-label">BUILD MODE</span>
+                        <div id="planet-target" class="mt-1 text-cyan-200" aria-live="polite">Click a planet in flight to target it.</div>
                     </div>
                 </div>
                 <div id="flight-controls" class="mt-4 grid grid-cols-3 gap-3 sm:max-w-md sm:mx-auto" aria-label="Flight controls">
@@ -325,7 +326,7 @@
                     <button type="button" class="flight-control action-button rounded-xl border border-cyan-400/50 bg-cyan-500/90 py-3 text-lg font-bold text-slate-950" data-control="thrust" aria-label="Thrust">↑</button>
                     <button type="button" class="flight-control action-button rounded-xl border border-slate-600 bg-slate-800/80 py-3 text-lg text-slate-200" data-control="right" aria-label="Rotate right">↷</button>
                 </div>
-                <p class="mt-3 text-center text-xs text-slate-500">WASD: W throttle, S brake, A/D steer. Space: stage. E: dock, Q: undock. Click a ship to switch.</p>
+                <p class="mt-3 text-center text-xs text-slate-500">WASD: W throttle, S brake, A/D steer. Space: stage. E: dock, Q: undock. Click a planet to target it or a ship to switch.</p>
             </div>
         </div>
     </div>
@@ -341,6 +342,7 @@
         const buildStatus = document.getElementById('build-status');
         const partCount = document.getElementById('part-count');
         const modeLabel = document.getElementById('mode-label');
+        const planetTarget = document.getElementById('planet-target');
         const flightControls = document.querySelectorAll('.flight-control');
 
         // Set canvas size with good resolution
@@ -1132,12 +1134,17 @@
         }
 
         canvas.addEventListener('pointermove', (event) => {
+            if (gameState === 'flying') {
+                canvas.style.cursor = getCelestialBodyAt(event) ? 'pointer' : '';
+                return;
+            }
             if (gameState !== 'building') return;
             cursorPosition = getCanvasPosition(event);
             drawBuildMode();
         });
 
         canvas.addEventListener('pointerleave', () => {
+            canvas.style.cursor = '';
             cursorPosition = null;
             drawBuildMode();
         });
@@ -1339,6 +1346,7 @@
         // Handle canvas clicks
         canvas.addEventListener('click', (e) => {
             if (gameState === 'flying') {
+                if (selectCelestialBodyAt(e)) return;
                 switchToDebrisVessel(e);
                 return;
             }
@@ -1577,10 +1585,12 @@
 
         const celestialBodies = [
             {
+                name: 'Cobalt',
                 x: 900, y: -500, radius: 44, color: '#2563eb', highlight: '#93c5fd',
                 moons: [{ radius: 74, size: 8, color: '#94a3b8', speed: 0.45, phase: 0.5 }]
             },
             {
+                name: 'Ember',
                 x: -1500, y: 980, radius: 30, color: '#b45309', highlight: '#fbbf24',
                 rings: true,
                 moons: [
@@ -1589,20 +1599,49 @@
                 ]
             },
             {
+                name: 'Verdant',
                 x: 2600, y: 1700, radius: 64, color: '#166534', highlight: '#86efac',
                 moons: [{ radius: 102, size: 10, color: '#d6d3d1', speed: 0.2, phase: 2.1 }]
             },
             {
+                name: 'Orchid',
                 x: -3600, y: -2200, radius: 22, color: '#9333ea', highlight: '#e9d5ff',
                 moons: []
             }
         ];
+        let selectedCelestialBody = null;
+
+        function getCelestialBodyScreenPosition(body, cameraX, cameraY) {
+            const worldScale = 0.08;
+            return {
+                x: canvasWidth * 0.5 + (body.x - cameraX) * worldScale,
+                y: canvasHeight * 0.5 + (body.y - cameraY) * worldScale
+            };
+        }
+
+        function getCelestialBodyAt(event) {
+            const camera = getCameraPosition();
+            const cameraX = rocket.universe.x || camera.x;
+            const cameraY = rocket.universe.y || camera.y;
+            const { x, y } = getCanvasPosition(event);
+            return celestialBodies.find(candidate => {
+                const position = getCelestialBodyScreenPosition(candidate, cameraX, cameraY);
+                return Math.hypot(x - position.x, y - position.y) <= candidate.radius;
+            });
+        }
+
+        function selectCelestialBodyAt(event) {
+            const body = getCelestialBodyAt(event);
+            if (!body) return false;
+
+            selectedCelestialBody = body;
+            planetTarget.textContent = `TARGET: ${body.name} | Radius: ${body.radius} | Moons: ${body.moons.length}`;
+            return true;
+        }
 
         function drawCelestialBodies(cameraX, cameraY) {
-            const worldScale = 0.08;
             celestialBodies.forEach(body => {
-                const bodyX = canvasWidth * 0.5 + (body.x - cameraX) * worldScale;
-                const bodyY = canvasHeight * 0.5 + (body.y - cameraY) * worldScale;
+                const { x: bodyX, y: bodyY } = getCelestialBodyScreenPosition(body, cameraX, cameraY);
                 if (bodyX < -140 || bodyX > canvasWidth + 140 || bodyY < -140 || bodyY > canvasHeight + 140) return;
 
                 body.moons.forEach(moon => {
@@ -1635,6 +1674,16 @@
                     ctx.beginPath();
                     ctx.ellipse(bodyX, bodyY, body.radius * 1.8, body.radius * 0.42, -0.18, 0, Math.PI * 2);
                     ctx.stroke();
+                }
+
+                if (body === selectedCelestialBody) {
+                    ctx.strokeStyle = 'rgba(103, 232, 249, 0.95)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 5]);
+                    ctx.beginPath();
+                    ctx.arc(bodyX, bodyY, body.radius + 9, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
                 }
             });
         }
@@ -2181,6 +2230,8 @@
             rocket.spaceOffset = { x: 0, y: 0 };
             rocket.hasMoved = false;
             lastFlightTime = 0;
+            selectedCelestialBody = null;
+            planetTarget.textContent = 'Click a planet in flight to target it.';
             gameState = 'building';
             launchBtn.disabled = false;
             undoBtn.disabled = true;
